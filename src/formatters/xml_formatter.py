@@ -144,7 +144,7 @@ class OptionsMCPFormatter:
 
     def _format_pattern(self, pattern: Dict[str, Any]) -> str:
         """Format a single pattern"""
-        pattern_type = pattern.get('pattern_type', 'UNKNOWN')
+        pattern_type = pattern.get('type', 'UNKNOWN')
         data = pattern.get('data', {})
         
         xml = f'            <pattern type="{pattern_type}">\n'
