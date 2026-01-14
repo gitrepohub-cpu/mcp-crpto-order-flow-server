@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcp-options-order-flow-server"
-version = "1.0.0"
-description = "Real-time MCP server for options order flow analysis"
+name = "mcp-crypto-arbitrage-server"
+version = "2.0.0"
+description = "Real-time MCP server for cryptocurrency arbitrage analysis"
 authors = [
     {name = "Sayantan", email = "sayantanbhow@gmail.com"}
 ]
@@ -15,18 +15,16 @@ requires-python = ">=3.8"
 
 dependencies = [
     "fastmcp>=0.1.0",
-    "grpcio>=1.60.0",
-    "grpcio-tools>=1.60.0",
-    "protobuf>=4.25.0",
+    "websockets>=12.0",
     "nest-asyncio>=1.5.0"
 ]
 
 [project.scripts]
-mcp-options-order-flow-server = "mcp_server:main"
-
+mcp-crypto-arbitrage = "src.mcp_server:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]

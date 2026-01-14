@@ -1,6 +1,8 @@
-# Core dependencies for MCP Options Order Flow Server
+# Core MCP framework
 fastmcp>=0.1.0
-grpcio>=1.60.0
-grpcio-tools>=1.60.0
-protobuf>=4.25.0
+
+# WebSocket client for Go arbitrage scanner
+websockets>=12.0
+
+# Async utilities
 nest-asyncio>=1.5.0

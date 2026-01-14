@@ -1,3 +1,8 @@
-"""MCP Options Order Flow Server"""
+"""MCP Crypto Arbitrage Server
 
-__version__ = "0.1.0"
+Integrates with the Go crypto-futures-arbitrage-scanner to provide
+real-time arbitrage analysis across 10+ cryptocurrency exchanges.
+"""
+
+__version__ = "2.0.0"
+__author__ = "MCP Crypto Integration"
