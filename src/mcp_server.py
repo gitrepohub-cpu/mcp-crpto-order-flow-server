@@ -266,7 +266,7 @@ async def compare_exchange_prices(
         client = get_arbitrage_client()
         formatter = CryptoArbitrageFormatter()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(1.0)
         
@@ -366,7 +366,7 @@ async def get_orderbook_data(
 
 
 @mcp.tool()
-async def get_recent_trades(
+async def get_trades(
     symbol: str = None,
     exchange: str = None,
     limit: int = 50
@@ -386,7 +386,7 @@ async def get_recent_trades(
         XML with recent trades and volume statistics.
     
     Example:
-        "Show me recent BTC trades" → get_recent_trades(symbol="BTCUSDT")
+        "Show me recent BTC trades" → get_trades(symbol="BTCUSDT")
     """
     try:
         logger.info(f"Getting recent trades for {symbol or 'all'}")
@@ -593,22 +593,22 @@ async def get_market_intelligence(
         logger.info(f"Computing market intelligence for {symbol}")
         
         # Get data from exchange client
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Gather all data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
-        funding = await client.get_funding_rates_snapshot(symbol)
-        oi = await client.get_open_interest_snapshot(symbol)
-        liquidations = await client.get_recent_liquidations(symbol)
-        mark_prices = await client.get_mark_prices_snapshot(symbol)
-        tickers = await client.get_24h_tickers_snapshot(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
+        funding = await client.get_funding_rates(symbol)
+        oi = await client.get_open_interest(symbol)
+        liquidations = await client.get_liquidations(symbol)
+        mark_prices = await client.get_mark_prices(symbol)
+        tickers = await client.get_ticker_24h(symbol)
         
         # Prepare data for feature engine
         data = {
@@ -658,20 +658,20 @@ async def get_institutional_pressure(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Computing institutional pressure for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
-        funding = await client.get_funding_rates_snapshot(symbol)
-        oi = await client.get_open_interest_snapshot(symbol)
-        mark_prices = await client.get_mark_prices_snapshot(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
+        funding = await client.get_funding_rates(symbol)
+        oi = await client.get_open_interest(symbol)
+        mark_prices = await client.get_mark_prices(symbol)
         
         # Compute layer features
         from src.analytics import OrderFlowAnalytics, LeverageAnalytics, CrossExchangeAnalytics
@@ -746,21 +746,21 @@ async def get_squeeze_probability(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Computing squeeze probability for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
-        funding = await client.get_funding_rates_snapshot(symbol)
-        oi = await client.get_open_interest_snapshot(symbol)
-        liquidations = await client.get_recent_liquidations(symbol)
-        mark_prices = await client.get_mark_prices_snapshot(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
+        funding = await client.get_funding_rates(symbol)
+        oi = await client.get_open_interest(symbol)
+        liquidations = await client.get_liquidations(symbol)
+        mark_prices = await client.get_mark_prices(symbol)
         
         # Get current price
         current_price = 0.0
@@ -849,22 +849,22 @@ async def get_market_regime(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Detecting market regime for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
-        funding = await client.get_funding_rates_snapshot(symbol)
-        oi = await client.get_open_interest_snapshot(symbol)
-        liquidations = await client.get_recent_liquidations(symbol)
-        mark_prices = await client.get_mark_prices_snapshot(symbol)
-        tickers = await client.get_24h_tickers_snapshot(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
+        funding = await client.get_funding_rates(symbol)
+        oi = await client.get_open_interest(symbol)
+        liquidations = await client.get_liquidations(symbol)
+        mark_prices = await client.get_mark_prices(symbol)
+        tickers = await client.get_ticker_24h(symbol)
         
         # Get current price
         current_price = 0.0
@@ -967,17 +967,17 @@ async def get_liquidity_analysis(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Analyzing liquidity for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
         
         # Get current price
         current_price = 0.0
@@ -1079,20 +1079,20 @@ async def get_leverage_analysis(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Analyzing leverage for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
-        funding = await client.get_funding_rates_snapshot(symbol)
-        oi = await client.get_open_interest_snapshot(symbol)
-        liquidations = await client.get_recent_liquidations(symbol)
-        mark_prices = await client.get_mark_prices_snapshot(symbol)
+        trades = await client.get_trades(symbol)
+        funding = await client.get_funding_rates(symbol)
+        oi = await client.get_open_interest(symbol)
+        liquidations = await client.get_liquidations(symbol)
+        mark_prices = await client.get_mark_prices(symbol)
         
         # Get current price
         current_price = 0.0
@@ -1186,17 +1186,17 @@ async def get_cross_exchange_analysis(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Analyzing cross-exchange dynamics for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
         # Get required data
         prices = await client.get_prices_snapshot(symbol)
-        orderbooks = await client.get_orderbooks_snapshot(symbol)
-        trades = await client.get_recent_trades(symbol)
+        orderbooks = await client.get_orderbooks(symbol)
+        trades = await client.get_trades(symbol)
         
         # Compute features
         from src.analytics import CrossExchangeAnalytics
@@ -1360,10 +1360,10 @@ async def stream_and_analyze(
         
         logger.info(f"Starting {duration}s streaming analysis for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
@@ -1409,10 +1409,10 @@ async def quick_analyze(symbol: str = "BTCUSDT") -> str:
     try:
         logger.info(f"Starting quick 10s analysis for {symbol}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
@@ -1488,10 +1488,10 @@ async def analyze_for_duration(
         
         logger.info(f"Starting {minutes}min ({duration}s) analysis for {symbol}, focus={focus}")
         
-        from src.storage.direct_exchange_client import get_exchange_client
-        client = get_exchange_client()
+        from src.storage.direct_exchange_client import get_direct_client
+        client = get_direct_client()
         
-        if not client.connected:
+        if not client._started:
             await client.connect()
             await asyncio.sleep(2.0)
         
@@ -1846,7 +1846,7 @@ def main():
     logger.info("")
     logger.info("  DATA STREAM TOOLS:")
     logger.info("    • get_orderbook_data           - Real-time orderbook depth")
-    logger.info("    • get_recent_trades            - Recent trades and volume stats")
+    logger.info("    • get_trades            - Recent trades and volume stats")
     logger.info("    • get_funding_rate_data        - Funding rates and sentiment")
     logger.info("    • get_liquidation_data         - Recent liquidation events")
     logger.info("    • get_open_interest_data       - Open interest per exchange")
@@ -1884,3 +1884,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+

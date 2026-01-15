@@ -100,48 +100,56 @@ class StreamingAnalyzer:
                             "data": price_data
                         })
                     
-                    # Get orderbooks
-                    ob_data = await client.get_orderbooks_snapshot(symbol)
+                    # Get orderbooks - returns {symbol: {exchange: orderbook}}
+                    ob_data = await client.get_orderbooks(symbol)
                     if ob_data:
-                        orderbook_snapshots.append({
-                            "timestamp": snapshot_time,
-                            "data": ob_data
-                        })
-                        # Calculate spread
-                        for ex, ob in ob_data.items():
-                            if ob.get("bids") and ob.get("asks"):
-                                best_bid = ob["bids"][0][0] if ob["bids"] else 0
-                                best_ask = ob["asks"][0][0] if ob["asks"] else 0
-                                if best_bid and best_ask:
-                                    spread_pct = ((best_ask - best_bid) / best_bid) * 100
-                                    spreads.append({
-                                        "exchange": ex,
-                                        "spread_pct": spread_pct,
-                                        "timestamp": snapshot_time
-                                    })
+                        # Extract orderbooks for this symbol
+                        sym_obs = ob_data.get(symbol, {})
+                        if sym_obs:
+                            orderbook_snapshots.append({
+                                "timestamp": snapshot_time,
+                                "data": sym_obs
+                            })
+                            # Calculate spread
+                            for ex, ob in sym_obs.items():
+                                if ob.get("bids") and ob.get("asks"):
+                                    best_bid = ob["bids"][0][0] if ob["bids"] else 0
+                                    best_ask = ob["asks"][0][0] if ob["asks"] else 0
+                                    if best_bid and best_ask:
+                                        spread_pct = ((best_ask - best_bid) / best_bid) * 100
+                                        spreads.append({
+                                            "exchange": ex,
+                                            "spread_pct": spread_pct,
+                                            "timestamp": snapshot_time
+                                        })
                     
-                    # Get trades
-                    trade_data = await client.get_recent_trades(symbol)
-                    if trade_data and trade_data.get("trades"):
-                        trades_collected.extend(trade_data["trades"])
+                    # Get trades - returns {symbol: {exchange: [trades]}}
+                    trade_data = await client.get_trades(symbol)
+                    if trade_data:
+                        sym_trades = trade_data.get(symbol, {})
+                        for ex, trades_list in sym_trades.items():
+                            if trades_list:
+                                trades_collected.extend(trades_list)
                     
                     # Get funding (less frequently)
                     if sample_count % 4 == 0:
-                        funding_data = await client.get_funding_rates_snapshot(symbol)
+                        funding_data = await client.get_funding_rates(symbol)
                         if funding_data:
                             funding_snapshots.append({
                                 "timestamp": snapshot_time,
                                 "data": funding_data
                             })
                     
-                    # Get liquidations
-                    liq_data = await client.get_recent_liquidations(symbol)
-                    if liq_data and liq_data.get("liquidations"):
-                        liquidations_collected.extend(liq_data["liquidations"])
+                    # Get liquidations - returns {symbol: [liquidations]}
+                    liq_data = await client.get_liquidations(symbol)
+                    if liq_data:
+                        sym_liqs = liq_data.get(symbol, [])
+                        if sym_liqs:
+                            liquidations_collected.extend(sym_liqs)
                     
                     # Get OI (less frequently)
                     if sample_count % 4 == 0:
-                        oi_data = await client.get_open_interest_snapshot(symbol)
+                        oi_data = await client.get_open_interest(symbol)
                         if oi_data:
                             oi_snapshots.append({
                                 "timestamp": snapshot_time,
@@ -214,16 +222,23 @@ class StreamingAnalyzer:
             return {"error": "No price data collected"}
         
         # Extract all prices by exchange
+        # price_data format: {symbol: {exchange: price_value}}
         exchange_prices = defaultdict(list)
         timestamps = []
         
         for snapshot in prices:
             timestamps.append(snapshot["timestamp"])
-            for exchange, data in snapshot["data"].items():
-                if symbol in data:
-                    price = data[symbol].get("price", 0)
-                    if price > 0:
-                        exchange_prices[exchange].append(price)
+            data = snapshot["data"]
+            # Get prices for the symbol
+            sym_prices = data.get(symbol, {})
+            for exchange, price_value in sym_prices.items():
+                # price_value can be a dict with 'price' key or just the price
+                if isinstance(price_value, dict):
+                    price = price_value.get("price", 0)
+                else:
+                    price = price_value
+                if price and price > 0:
+                    exchange_prices[exchange].append(price)
         
         if not exchange_prices:
             return {"error": "No valid prices extracted"}
