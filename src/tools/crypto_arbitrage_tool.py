@@ -270,6 +270,636 @@ async def arbitrage_scanner_health() -> str:
         )
 
 
+# ============================================================================
+# NEW DATA STREAM TOOLS
+# ============================================================================
+
+async def get_orderbooks(
+    symbol: Optional[str] = None,
+    exchange: Optional[str] = None
+) -> str:
+    """
+    Get orderbook depth data from exchanges.
+    Shows top 10 bid/ask levels, depth, and spread for each exchange.
+    
+    Args:
+        symbol: Specific symbol (BTCUSDT, ETHUSDT, etc.) or None for all
+        exchange: Specific exchange or None for all
+    
+    Returns:
+        XML formatted orderbook data with depth analysis
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        # Only direct client supports orderbooks
+        if not hasattr(client, 'get_orderbooks'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Orderbook data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        orderbooks = await client.get_orderbooks(symbol, exchange)
+        
+        if not orderbooks:
+            return _build_error_response(
+                "NO_DATA",
+                "No orderbook data available",
+                ["Wait a few seconds for data to arrive", "Check symbol/exchange parameters"]
+            )
+        
+        return _format_orderbooks_xml(orderbooks)
+        
+    except Exception as e:
+        logger.error(f"Error in get_orderbooks: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_trades(
+    symbol: Optional[str] = None,
+    exchange: Optional[str] = None,
+    limit: int = 50
+) -> str:
+    """
+    Get recent trades from exchanges.
+    Shows price, quantity, side (buy/sell), and value for each trade.
+    
+    Args:
+        symbol: Specific symbol or None for all
+        exchange: Specific exchange or None for all
+        limit: Max trades per exchange (default 50)
+    
+    Returns:
+        XML formatted recent trades with aggregated statistics
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_trades'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Trade data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        trades = await client.get_trades(symbol, exchange, limit)
+        
+        if not trades:
+            return _build_error_response("NO_DATA", "No trade data available", [])
+        
+        return _format_trades_xml(trades)
+        
+    except Exception as e:
+        logger.error(f"Error in get_trades: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_funding_rates(symbol: Optional[str] = None) -> str:
+    """
+    Get funding rates from all futures exchanges.
+    Shows current rate, annualized rate, and next funding time.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML formatted funding rates with analysis
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_funding_rates'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Funding rate data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        funding = await client.get_funding_rates(symbol)
+        
+        if not funding:
+            return _build_error_response("NO_DATA", "No funding rate data available", [])
+        
+        return _format_funding_rates_xml(funding)
+        
+    except Exception as e:
+        logger.error(f"Error in get_funding_rates: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_liquidations(symbol: Optional[str] = None, limit: int = 20) -> str:
+    """
+    Get recent liquidation events from exchanges.
+    Shows forced liquidation side, price, quantity, and value.
+    
+    Args:
+        symbol: Specific symbol or None for all
+        limit: Max liquidations to return (default 20)
+    
+    Returns:
+        XML formatted liquidation events
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_liquidations'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Liquidation data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        liquidations = await client.get_liquidations(symbol, limit)
+        
+        if not liquidations or all(not v for v in liquidations.values()):
+            return f"""<?xml version="1.0" encoding="UTF-8"?>
+<liquidations>
+  <status>NO_RECENT_LIQUIDATIONS</status>
+  <message>No recent liquidation events detected</message>
+  <timestamp>{datetime.utcnow().isoformat()}</timestamp>
+</liquidations>"""
+        
+        return _format_liquidations_xml(liquidations)
+        
+    except Exception as e:
+        logger.error(f"Error in get_liquidations: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_open_interest(symbol: Optional[str] = None) -> str:
+    """
+    Get open interest data from futures exchanges.
+    Shows total open interest and value per exchange.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML formatted open interest data
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_open_interest'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Open interest data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        oi_data = await client.get_open_interest(symbol)
+        
+        if not oi_data:
+            return _build_error_response("NO_DATA", "No open interest data available", [])
+        
+        return _format_open_interest_xml(oi_data)
+        
+    except Exception as e:
+        logger.error(f"Error in get_open_interest: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_mark_prices(symbol: Optional[str] = None) -> str:
+    """
+    Get mark prices and basis from futures exchanges.
+    Shows mark price, index price, basis, and basis percentage.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML formatted mark price and basis data
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_mark_prices'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Mark price data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        mark_data = await client.get_mark_prices(symbol)
+        
+        if not mark_data:
+            return _build_error_response("NO_DATA", "No mark price data available", [])
+        
+        return _format_mark_prices_xml(mark_data)
+        
+    except Exception as e:
+        logger.error(f"Error in get_mark_prices: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_ticker_24h(symbol: Optional[str] = None) -> str:
+    """
+    Get 24-hour ticker statistics from all exchanges.
+    Shows volume, high, low, and price change percentage.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML formatted 24h statistics
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_ticker_24h'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "24h ticker data requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        ticker_data = await client.get_ticker_24h(symbol)
+        
+        if not ticker_data:
+            return _build_error_response("NO_DATA", "No 24h ticker data available", [])
+        
+        return _format_ticker_24h_xml(ticker_data)
+        
+    except Exception as e:
+        logger.error(f"Error in get_ticker_24h: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+async def get_market_summary(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive market summary for a symbol.
+    Combines all data: prices, orderbooks, funding, OI, 24h stats, trades, liquidations.
+    
+    Args:
+        symbol: Symbol to analyze (default BTCUSDT)
+    
+    Returns:
+        XML formatted comprehensive market summary
+    """
+    client = get_client()
+    
+    try:
+        if not await _ensure_client_connected(client):
+            return _build_error_response("CONNECTION_FAILED", "Unable to connect", [])
+        
+        if not hasattr(client, 'get_market_summary'):
+            return _build_error_response(
+                "NOT_SUPPORTED",
+                "Market summary requires direct exchange mode",
+                ["Set USE_DIRECT_EXCHANGES=true"]
+            )
+        
+        summary = await client.get_market_summary(symbol)
+        return _format_market_summary_xml(summary)
+        
+    except Exception as e:
+        logger.error(f"Error in get_market_summary: {e}", exc_info=True)
+        return _build_error_response("ERROR", str(e), [])
+
+
+# ============================================================================
+# XML Formatting Helpers for New Tools
+# ============================================================================
+
+def _format_orderbooks_xml(orderbooks: Dict) -> str:
+    """Format orderbook data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<orderbooks>']
+    
+    for symbol, exchanges in orderbooks.items():
+        lines.append(f'  <symbol name="{symbol}">')
+        for exchange, data in exchanges.items():
+            spread = data.get('spread', 0)
+            spread_pct = data.get('spread_pct', 0)
+            bid_depth = data.get('bid_depth', 0)
+            ask_depth = data.get('ask_depth', 0)
+            
+            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'      <spread>${spread:.2f}</spread>')
+            lines.append(f'      <spread_pct>{spread_pct:.4f}%</spread_pct>')
+            lines.append(f'      <bid_depth>{bid_depth:.4f}</bid_depth>')
+            lines.append(f'      <ask_depth>{ask_depth:.4f}</ask_depth>')
+            lines.append(f'      <imbalance>{((bid_depth - ask_depth) / (bid_depth + ask_depth) * 100) if bid_depth + ask_depth > 0 else 0:.2f}%</imbalance>')
+            
+            # Top 3 bids
+            lines.append('      <top_bids>')
+            for bid in data.get('bids', [])[:3]:
+                lines.append(f'        <level price="{bid["price"]:.2f}" qty="{bid["quantity"]:.4f}"/>')
+            lines.append('      </top_bids>')
+            
+            # Top 3 asks
+            lines.append('      <top_asks>')
+            for ask in data.get('asks', [])[:3]:
+                lines.append(f'        <level price="{ask["price"]:.2f}" qty="{ask["quantity"]:.4f}"/>')
+            lines.append('      </top_asks>')
+            
+            lines.append('    </exchange>')
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</orderbooks>')
+    return '\n'.join(lines)
+
+
+def _format_trades_xml(trades: Dict) -> str:
+    """Format trade data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<trades>']
+    
+    for symbol, exchanges in trades.items():
+        lines.append(f'  <symbol name="{symbol}">')
+        
+        for exchange, trade_list in exchanges.items():
+            if not trade_list:
+                continue
+                
+            # Calculate stats
+            total_volume = sum(t.get('quantity', 0) for t in trade_list)
+            total_value = sum(t.get('value', 0) for t in trade_list)
+            buy_volume = sum(t.get('quantity', 0) for t in trade_list if t.get('side') == 'buy')
+            sell_volume = sum(t.get('quantity', 0) for t in trade_list if t.get('side') == 'sell')
+            
+            lines.append(f'    <exchange name="{exchange}" trade_count="{len(trade_list)}">')
+            lines.append(f'      <total_volume>{total_volume:.4f}</total_volume>')
+            lines.append(f'      <total_value>${total_value:,.2f}</total_value>')
+            lines.append(f'      <buy_volume>{buy_volume:.4f}</buy_volume>')
+            lines.append(f'      <sell_volume>{sell_volume:.4f}</sell_volume>')
+            lines.append(f'      <buy_sell_ratio>{(buy_volume/sell_volume if sell_volume > 0 else 0):.2f}</buy_sell_ratio>')
+            
+            # Recent trades
+            lines.append('      <recent_trades>')
+            for trade in trade_list[:5]:
+                lines.append(f'        <trade side="{trade.get("side", "")}" price="{trade.get("price", 0):.2f}" qty="{trade.get("quantity", 0):.4f}" value="${trade.get("value", 0):,.2f}"/>')
+            lines.append('      </recent_trades>')
+            lines.append('    </exchange>')
+        
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</trades>')
+    return '\n'.join(lines)
+
+
+def _format_funding_rates_xml(funding: Dict) -> str:
+    """Format funding rate data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<funding_rates>']
+    
+    for symbol, exchanges in funding.items():
+        if not exchanges:
+            continue
+        lines.append(f'  <symbol name="{symbol}">')
+        
+        rates = []
+        for exchange, data in exchanges.items():
+            rate_pct = data.get('rate_pct', 0)
+            annualized = data.get('annualized_rate', 0)
+            rates.append(rate_pct)
+            
+            sentiment = "NEUTRAL"
+            if rate_pct > 0.01:
+                sentiment = "BULLISH" if rate_pct > 0.05 else "SLIGHTLY_BULLISH"
+            elif rate_pct < -0.01:
+                sentiment = "BEARISH" if rate_pct < -0.05 else "SLIGHTLY_BEARISH"
+            
+            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'      <rate_pct>{rate_pct:.4f}%</rate_pct>')
+            lines.append(f'      <annualized_rate>{annualized:.2f}%</annualized_rate>')
+            lines.append(f'      <sentiment>{sentiment}</sentiment>')
+            lines.append('    </exchange>')
+        
+        # Summary
+        if rates:
+            avg_rate = sum(rates) / len(rates)
+            lines.append(f'    <summary avg_rate="{avg_rate:.4f}%" exchanges="{len(rates)}"/>')
+        
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</funding_rates>')
+    return '\n'.join(lines)
+
+
+def _format_liquidations_xml(liquidations: Dict) -> str:
+    """Format liquidation data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<liquidations>']
+    
+    total_long = 0
+    total_short = 0
+    
+    for symbol, liq_list in liquidations.items():
+        if not liq_list:
+            continue
+        lines.append(f'  <symbol name="{symbol}" count="{len(liq_list)}">')
+        
+        sym_long = sum(l.get('value', 0) for l in liq_list if l.get('side', '').lower() in ('buy', 'long'))
+        sym_short = sum(l.get('value', 0) for l in liq_list if l.get('side', '').lower() in ('sell', 'short'))
+        total_long += sym_long
+        total_short += sym_short
+        
+        lines.append(f'    <long_liquidations>${sym_long:,.2f}</long_liquidations>')
+        lines.append(f'    <short_liquidations>${sym_short:,.2f}</short_liquidations>')
+        
+        for liq in liq_list[:10]:
+            lines.append(f'    <liquidation side="{liq.get("side", "")}" exchange="{liq.get("exchange", "")}" price="{liq.get("price", 0):.2f}" qty="{liq.get("quantity", 0):.4f}" value="${liq.get("value", 0):,.2f}"/>')
+        
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <total_long_liquidations>${total_long:,.2f}</total_long_liquidations>')
+    lines.append(f'  <total_short_liquidations>${total_short:,.2f}</total_short_liquidations>')
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</liquidations>')
+    return '\n'.join(lines)
+
+
+def _format_open_interest_xml(oi_data: Dict) -> str:
+    """Format open interest data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<open_interest>']
+    
+    for symbol, exchanges in oi_data.items():
+        if not exchanges:
+            continue
+        lines.append(f'  <symbol name="{symbol}">')
+        
+        total_oi = 0
+        for exchange, data in exchanges.items():
+            oi = data.get('open_interest', 0)
+            oi_value = data.get('open_interest_value', 0)
+            total_oi += oi
+            
+            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'      <open_interest>{oi:,.0f}</open_interest>')
+            if oi_value > 0:
+                lines.append(f'      <open_interest_value>${oi_value:,.2f}</open_interest_value>')
+            lines.append('    </exchange>')
+        
+        lines.append(f'    <total_oi>{total_oi:,.0f}</total_oi>')
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</open_interest>')
+    return '\n'.join(lines)
+
+
+def _format_mark_prices_xml(mark_data: Dict) -> str:
+    """Format mark price data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<mark_prices>']
+    
+    for symbol, exchanges in mark_data.items():
+        if not exchanges:
+            continue
+        lines.append(f'  <symbol name="{symbol}">')
+        
+        for exchange, data in exchanges.items():
+            mark = data.get('mark_price', 0)
+            index = data.get('index_price', 0)
+            basis = data.get('basis', 0)
+            basis_pct = data.get('basis_pct', 0)
+            
+            # Basis interpretation
+            if basis_pct > 0.05:
+                basis_status = "CONTANGO (futures premium)"
+            elif basis_pct < -0.05:
+                basis_status = "BACKWARDATION (futures discount)"
+            else:
+                basis_status = "NEUTRAL"
+            
+            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'      <mark_price>${mark:,.2f}</mark_price>')
+            if index > 0:
+                lines.append(f'      <index_price>${index:,.2f}</index_price>')
+                lines.append(f'      <basis>${basis:.2f}</basis>')
+                lines.append(f'      <basis_pct>{basis_pct:.4f}%</basis_pct>')
+                lines.append(f'      <basis_status>{basis_status}</basis_status>')
+            lines.append('    </exchange>')
+        
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</mark_prices>')
+    return '\n'.join(lines)
+
+
+def _format_ticker_24h_xml(ticker_data: Dict) -> str:
+    """Format 24h ticker data as XML."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<ticker_24h>']
+    
+    for symbol, exchanges in ticker_data.items():
+        if not exchanges:
+            continue
+        lines.append(f'  <symbol name="{symbol}">')
+        
+        for exchange, data in exchanges.items():
+            volume = data.get('volume', 0)
+            quote_vol = data.get('quote_volume', 0)
+            high = data.get('high_24h', 0)
+            low = data.get('low_24h', 0)
+            change_pct = data.get('price_change_pct', 0)
+            trades = data.get('trades_count', 0)
+            
+            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'      <volume>{volume:,.2f}</volume>')
+            if quote_vol > 0:
+                lines.append(f'      <quote_volume>${quote_vol:,.2f}</quote_volume>')
+            if high > 0:
+                lines.append(f'      <high_24h>${high:,.2f}</high_24h>')
+            if low > 0:
+                lines.append(f'      <low_24h>${low:,.2f}</low_24h>')
+            lines.append(f'      <price_change_pct>{change_pct:.2f}%</price_change_pct>')
+            if trades > 0:
+                lines.append(f'      <trades_count>{trades:,}</trades_count>')
+            lines.append('    </exchange>')
+        
+        lines.append('  </symbol>')
+    
+    lines.append(f'  <timestamp>{datetime.utcnow().isoformat()}</timestamp>')
+    lines.append('</ticker_24h>')
+    return '\n'.join(lines)
+
+
+def _format_market_summary_xml(summary: Dict) -> str:
+    """Format comprehensive market summary as XML."""
+    symbol = summary.get('symbol', 'UNKNOWN')
+    
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', f'<market_summary symbol="{symbol}">']
+    
+    # Prices section
+    prices = summary.get('prices', {})
+    if prices:
+        lines.append('  <prices>')
+        for ex, data in prices.items():
+            price = data.get('price', 0)
+            if price > 0:
+                lines.append(f'    <exchange name="{ex}">${price:,.2f}</exchange>')
+        lines.append('  </prices>')
+    
+    # Funding rates
+    funding = summary.get('funding_rates', {})
+    if funding:
+        lines.append('  <funding_rates>')
+        for ex, data in funding.items():
+            rate = data.get('rate_pct', 0)
+            lines.append(f'    <exchange name="{ex}">{rate:.4f}%</exchange>')
+        lines.append('  </funding_rates>')
+    
+    # Open interest
+    oi = summary.get('open_interest', {})
+    if oi:
+        lines.append('  <open_interest>')
+        for ex, data in oi.items():
+            oi_val = data.get('open_interest', 0)
+            if oi_val > 0:
+                lines.append(f'    <exchange name="{ex}">{oi_val:,.0f}</exchange>')
+        lines.append('  </open_interest>')
+    
+    # 24h stats
+    ticker = summary.get('ticker_24h', {})
+    if ticker:
+        lines.append('  <volume_24h>')
+        for ex, data in ticker.items():
+            vol = data.get('volume', 0)
+            if vol > 0:
+                lines.append(f'    <exchange name="{ex}">{vol:,.2f}</exchange>')
+        lines.append('  </volume_24h>')
+    
+    # Trade counts
+    trade_counts = summary.get('recent_trades_count', {})
+    if trade_counts:
+        total = sum(trade_counts.values())
+        lines.append(f'  <recent_trades_total>{total}</recent_trades_total>')
+    
+    # Recent liquidations
+    liqs = summary.get('recent_liquidations', [])
+    if liqs:
+        lines.append(f'  <recent_liquidations count="{len(liqs)}">')
+        for liq in liqs[:3]:
+            lines.append(f'    <liquidation side="{liq.get("side", "")}" value="${liq.get("value", 0):,.2f}"/>')
+        lines.append('  </recent_liquidations>')
+    
+    lines.append(f'  <timestamp>{summary.get("timestamp", datetime.utcnow().isoformat())}</timestamp>')
+    lines.append('</market_summary>')
+    return '\n'.join(lines)
+
+
 def _generate_analysis(
     prices: Dict,
     spreads: Dict,

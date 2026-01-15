@@ -57,8 +57,37 @@ class DirectExchangeClient:
     }
     
     def __init__(self):
-        # Data stores
-        self.prices: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {price, timestamp}
+        # ====================================================================
+        # DATA STORES - Comprehensive market data
+        # ====================================================================
+        
+        # Price data (existing)
+        self.prices: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {price, bid, ask, timestamp}
+        
+        # Order Book Depth - Top 10 levels per exchange
+        self.orderbooks: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {bids: [], asks: [], timestamp}
+        
+        # Trade Stream - Recent trades
+        self.trades: Dict[str, Dict[str, List]] = {}  # symbol -> exchange -> [trades]
+        self.max_trades_per_symbol = 100
+        
+        # Funding Rates (Futures only)
+        self.funding_rates: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {rate, next_time, timestamp}
+        
+        # Mark Price & Index Price
+        self.mark_prices: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {mark, index, timestamp}
+        
+        # Liquidations
+        self.liquidations: Dict[str, List] = {}  # symbol -> [liquidation events]
+        self.max_liquidations = 50
+        
+        # Open Interest
+        self.open_interest: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {oi, oi_value, timestamp}
+        
+        # 24h Statistics
+        self.ticker_24h: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {volume, high, low, change_pct}
+        
+        # Arbitrage opportunities
         self.arbitrage_opportunities: List[Dict] = []
         self.max_opportunities = 100
         
@@ -69,9 +98,16 @@ class DirectExchangeClient:
         self._running = False
         self._started = False
         
-        # Initialize price structure
+        # Initialize data structures for all symbols
         for symbol in self.SUPPORTED_SYMBOLS:
             self.prices[symbol] = {}
+            self.orderbooks[symbol] = {}
+            self.trades[symbol] = {}
+            self.funding_rates[symbol] = {}
+            self.mark_prices[symbol] = {}
+            self.liquidations[symbol] = []
+            self.open_interest[symbol] = {}
+            self.ticker_24h[symbol] = {}
         
         logger.info("DirectExchangeClient initialized")
     
@@ -148,75 +184,199 @@ class DirectExchangeClient:
     # ========================================================================
     
     async def _connect_binance_futures(self):
-        """Connect to Binance Futures WebSocket."""
-        streams = [f"{sym.lower()}@bookTicker" for sym in self.SUPPORTED_SYMBOLS]
+        """Connect to Binance Futures WebSocket - ALL streams."""
+        # Build comprehensive stream list for all symbols
+        streams = []
+        for sym in self.SUPPORTED_SYMBOLS:
+            s = sym.lower()
+            streams.extend([
+                f"{s}@bookTicker",      # Best bid/ask (fastest)
+                f"{s}@depth10@100ms",   # Top 10 orderbook levels
+                f"{s}@aggTrade",        # Aggregated trades
+                f"{s}@markPrice@1s",    # Mark price + funding rate
+                f"{s}@forceOrder",      # Liquidations
+                f"{s}@ticker",          # 24hr ticker stats
+            ])
+        
         url = f"wss://fstream.binance.com/stream?streams={'/'.join(streams)}"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
             self.connected_exchanges["binance_futures"] = True
-            logger.info("✓ Connected to Binance Futures")
+            logger.info("✓ Connected to Binance Futures (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
                     break
                 try:
                     data = json.loads(message)
-                    if "data" in data:
-                        ticker = data["data"]
-                        symbol = ticker.get("s", "").upper()
-                        if symbol in self.SUPPORTED_SYMBOLS:
-                            bid = float(ticker.get("b", 0))
-                            ask = float(ticker.get("a", 0))
-                            if bid > 0 and ask > 0:
-                                mid_price = (bid + ask) / 2
-                                await self._update_price(symbol, "binance_futures", mid_price, bid, ask)
+                    if "data" not in data:
+                        continue
+                    
+                    payload = data["data"]
+                    event_type = payload.get("e", "")
+                    symbol = payload.get("s", "").upper()
+                    
+                    if symbol not in self.SUPPORTED_SYMBOLS:
+                        continue
+                    
+                    # Route to appropriate handler
+                    if event_type == "bookTicker" or "b" in payload and "a" in payload and not event_type:
+                        # Best bid/ask
+                        bid = float(payload.get("b", 0))
+                        ask = float(payload.get("a", 0))
+                        if bid > 0 and ask > 0:
+                            mid_price = (bid + ask) / 2
+                            await self._update_price(symbol, "binance_futures", mid_price, bid, ask)
+                    
+                    elif event_type == "depthUpdate" or "bids" in payload:
+                        # Orderbook depth
+                        await self._update_orderbook(
+                            symbol, "binance_futures",
+                            payload.get("bids", payload.get("b", [])),
+                            payload.get("asks", payload.get("a", []))
+                        )
+                    
+                    elif event_type == "aggTrade":
+                        # Aggregated trade
+                        await self._update_trade(
+                            symbol, "binance_futures",
+                            price=float(payload.get("p", 0)),
+                            quantity=float(payload.get("q", 0)),
+                            is_buyer_maker=payload.get("m", False),
+                            timestamp=payload.get("T", int(time.time() * 1000))
+                        )
+                    
+                    elif event_type == "markPriceUpdate":
+                        # Mark price + funding rate
+                        await self._update_mark_price(
+                            symbol, "binance_futures",
+                            mark_price=float(payload.get("p", 0)),
+                            index_price=float(payload.get("i", 0)),
+                            funding_rate=float(payload.get("r", 0)),
+                            next_funding_time=payload.get("T", 0)
+                        )
+                    
+                    elif event_type == "forceOrder":
+                        # Liquidation
+                        order = payload.get("o", {})
+                        await self._update_liquidation(
+                            symbol, "binance_futures",
+                            side=order.get("S", ""),
+                            price=float(order.get("p", 0)),
+                            quantity=float(order.get("q", 0)),
+                            timestamp=order.get("T", int(time.time() * 1000))
+                        )
+                    
+                    elif event_type == "24hrTicker":
+                        # 24h statistics
+                        await self._update_ticker_24h(
+                            symbol, "binance_futures",
+                            volume=float(payload.get("v", 0)),
+                            quote_volume=float(payload.get("q", 0)),
+                            high=float(payload.get("h", 0)),
+                            low=float(payload.get("l", 0)),
+                            price_change_pct=float(payload.get("P", 0)),
+                            trades_count=int(payload.get("n", 0))
+                        )
+                        
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"Binance futures parse error: {e}")
     
     async def _connect_binance_spot(self):
-        """Connect to Binance Spot WebSocket."""
-        streams = [f"{sym.lower()}@bookTicker" for sym in self.SUPPORTED_SYMBOLS]
+        """Connect to Binance Spot WebSocket - ALL streams."""
+        # Build comprehensive stream list
+        streams = []
+        for sym in self.SUPPORTED_SYMBOLS:
+            s = sym.lower()
+            streams.extend([
+                f"{s}@bookTicker",      # Best bid/ask
+                f"{s}@depth10@100ms",   # Top 10 orderbook
+                f"{s}@aggTrade",        # Aggregated trades
+                f"{s}@ticker",          # 24hr ticker stats
+            ])
+        
         url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(streams)}"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
             self.connected_exchanges["binance_spot"] = True
-            logger.info("✓ Connected to Binance Spot")
+            logger.info("✓ Connected to Binance Spot (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
                     break
                 try:
                     data = json.loads(message)
-                    if "data" in data:
-                        ticker = data["data"]
-                        symbol = ticker.get("s", "").upper()
-                        if symbol in self.SUPPORTED_SYMBOLS:
-                            bid = float(ticker.get("b", 0))
-                            ask = float(ticker.get("a", 0))
-                            if bid > 0 and ask > 0:
-                                mid_price = (bid + ask) / 2
-                                await self._update_price(symbol, "binance_spot", mid_price, bid, ask)
+                    if "data" not in data:
+                        continue
+                    
+                    payload = data["data"]
+                    event_type = payload.get("e", "")
+                    symbol = payload.get("s", "").upper()
+                    
+                    if symbol not in self.SUPPORTED_SYMBOLS:
+                        continue
+                    
+                    if event_type == "bookTicker" or ("b" in payload and "a" in payload and not event_type):
+                        bid = float(payload.get("b", 0))
+                        ask = float(payload.get("a", 0))
+                        if bid > 0 and ask > 0:
+                            mid_price = (bid + ask) / 2
+                            await self._update_price(symbol, "binance_spot", mid_price, bid, ask)
+                    
+                    elif event_type == "depthUpdate" or "bids" in payload:
+                        await self._update_orderbook(
+                            symbol, "binance_spot",
+                            payload.get("bids", payload.get("b", [])),
+                            payload.get("asks", payload.get("a", []))
+                        )
+                    
+                    elif event_type == "aggTrade":
+                        await self._update_trade(
+                            symbol, "binance_spot",
+                            price=float(payload.get("p", 0)),
+                            quantity=float(payload.get("q", 0)),
+                            is_buyer_maker=payload.get("m", False),
+                            timestamp=payload.get("T", int(time.time() * 1000))
+                        )
+                    
+                    elif event_type == "24hrTicker":
+                        await self._update_ticker_24h(
+                            symbol, "binance_spot",
+                            volume=float(payload.get("v", 0)),
+                            quote_volume=float(payload.get("q", 0)),
+                            high=float(payload.get("h", 0)),
+                            low=float(payload.get("l", 0)),
+                            price_change_pct=float(payload.get("P", 0)),
+                            trades_count=int(payload.get("n", 0))
+                        )
+                        
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"Binance spot parse error: {e}")
     
     async def _connect_bybit_futures(self):
-        """Connect to Bybit Futures WebSocket."""
+        """Connect to Bybit Futures WebSocket - ALL streams."""
         url = "wss://stream.bybit.com/v5/public/linear"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to tickers (more reliable than orderbook)
-            subscribe_msg = {
-                "op": "subscribe",
-                "args": [f"tickers.{sym}" for sym in self.SUPPORTED_SYMBOLS]
-            }
+            # Subscribe to ALL available streams
+            args = []
+            for sym in self.SUPPORTED_SYMBOLS:
+                args.extend([
+                    f"tickers.{sym}",           # Ticker with bid/ask/volume
+                    f"orderbook.25.{sym}",      # Top 25 orderbook levels
+                    f"publicTrade.{sym}",       # Public trades
+                    f"liquidation.{sym}",       # Liquidations
+                ])
+            
+            subscribe_msg = {"op": "subscribe", "args": args}
             await ws.send(json.dumps(subscribe_msg))
             
             self.connected_exchanges["bybit_futures"] = True
-            logger.info("✓ Connected to Bybit Futures")
+            logger.info("✓ Connected to Bybit Futures (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
@@ -224,31 +384,85 @@ class DirectExchangeClient:
                 try:
                     data = json.loads(message)
                     topic = data.get("topic", "")
+                    payload = data.get("data", {})
+                    
+                    # Extract symbol from topic
+                    symbol = None
+                    for sym in self.SUPPORTED_SYMBOLS:
+                        if sym in topic:
+                            symbol = sym
+                            break
+                    
+                    if not symbol:
+                        continue
                     
                     if topic.startswith("tickers."):
-                        ticker_data = data.get("data", {})
-                        symbol = ticker_data.get("symbol", "").upper()
-                        if symbol in self.SUPPORTED_SYMBOLS:
-                            bid = float(ticker_data.get("bid1Price", 0) or 0)
-                            ask = float(ticker_data.get("ask1Price", 0) or 0)
-                            last = float(ticker_data.get("lastPrice", 0) or 0)
-                            
-                            if bid > 0 and ask > 0:
-                                mid_price = (bid + ask) / 2
-                            elif last > 0:
-                                mid_price = last
-                                bid = ask = last
-                            else:
-                                continue
-                                
+                        # Ticker data with funding, OI, volume
+                        bid = float(payload.get("bid1Price", 0) or 0)
+                        ask = float(payload.get("ask1Price", 0) or 0)
+                        last = float(payload.get("lastPrice", 0) or 0)
+                        
+                        if bid > 0 and ask > 0:
+                            mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "bybit_futures", mid_price, bid, ask)
+                        
+                        # Funding rate
+                        funding_rate = float(payload.get("fundingRate", 0) or 0)
+                        if funding_rate != 0:
+                            mark = float(payload.get("markPrice", 0) or 0)
+                            index = float(payload.get("indexPrice", 0) or 0)
+                            next_time = int(payload.get("nextFundingTime", 0) or 0)
+                            await self._update_mark_price(symbol, "bybit_futures", mark, index, funding_rate, next_time)
+                        
+                        # Open Interest
+                        oi = float(payload.get("openInterest", 0) or 0)
+                        oi_value = float(payload.get("openInterestValue", 0) or 0)
+                        if oi > 0:
+                            await self._update_open_interest(symbol, "bybit_futures", oi, oi_value)
+                        
+                        # 24h stats
+                        volume = float(payload.get("volume24h", 0) or 0)
+                        turnover = float(payload.get("turnover24h", 0) or 0)
+                        high = float(payload.get("highPrice24h", 0) or 0)
+                        low = float(payload.get("lowPrice24h", 0) or 0)
+                        change_pct = float(payload.get("price24hPcnt", 0) or 0) * 100
+                        await self._update_ticker_24h(symbol, "bybit_futures", volume, turnover, high, low, change_pct, 0)
+                    
+                    elif topic.startswith("orderbook."):
+                        # Orderbook
+                        bids = [[float(b[0]), float(b[1])] for b in payload.get("b", [])]
+                        asks = [[float(a[0]), float(a[1])] for a in payload.get("a", [])]
+                        await self._update_orderbook(symbol, "bybit_futures", bids, asks)
+                    
+                    elif topic.startswith("publicTrade."):
+                        # Trades - data is a list
+                        trades = payload if isinstance(payload, list) else [payload]
+                        for trade in trades:
+                            await self._update_trade(
+                                symbol, "bybit_futures",
+                                price=float(trade.get("p", 0)),
+                                quantity=float(trade.get("v", 0)),
+                                is_buyer_maker=trade.get("S", "") == "Sell",
+                                timestamp=int(trade.get("T", time.time() * 1000))
+                            )
+                    
+                    elif topic.startswith("liquidation."):
+                        # Liquidation
+                        await self._update_liquidation(
+                            symbol, "bybit_futures",
+                            side=payload.get("side", ""),
+                            price=float(payload.get("price", 0)),
+                            quantity=float(payload.get("size", 0)),
+                            timestamp=int(payload.get("updatedTime", time.time() * 1000))
+                        )
+                        
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
-                    logger.debug(f"Bybit parse error: {e}")
+                    logger.debug(f"Bybit futures parse error: {e}")
     
     async def _connect_okx_futures(self):
-        """Connect to OKX Futures WebSocket."""
+        """Connect to OKX Futures WebSocket - ALL streams."""
         url = "wss://ws.okx.com:8443/ws/v5/public"
         
         # OKX uses different symbol format
@@ -260,15 +474,24 @@ class DirectExchangeClient:
         }
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to tickers
-            subscribe_msg = {
-                "op": "subscribe",
-                "args": [{"channel": "tickers", "instId": inst} for inst in okx_symbols.values()]
-            }
+            # Subscribe to ALL available streams
+            args = []
+            for inst in okx_symbols.values():
+                args.extend([
+                    {"channel": "tickers", "instId": inst},           # Ticker
+                    {"channel": "books5", "instId": inst},            # Top 5 orderbook
+                    {"channel": "trades", "instId": inst},            # Trades
+                    {"channel": "mark-price", "instId": inst},        # Mark price
+                    {"channel": "funding-rate", "instId": inst},      # Funding rate
+                    {"channel": "open-interest", "instId": inst},     # Open interest
+                    {"channel": "liquidation-orders", "instType": "SWAP"},  # Liquidations
+                ])
+            
+            subscribe_msg = {"op": "subscribe", "args": args}
             await ws.send(json.dumps(subscribe_msg))
             
             self.connected_exchanges["okx_futures"] = True
-            logger.info("✓ Connected to OKX Futures")
+            logger.info("✓ Connected to OKX Futures (ALL STREAMS)")
             
             # Reverse mapping for symbol lookup
             reverse_symbols = {v: k for k, v in okx_symbols.items()}
@@ -279,44 +502,102 @@ class DirectExchangeClient:
                 try:
                     data = json.loads(message)
                     
-                    if "data" in data and data.get("arg", {}).get("channel") == "tickers":
-                        for ticker in data["data"]:
-                            inst_id = ticker.get("instId", "")
-                            symbol = reverse_symbols.get(inst_id)
+                    if "data" not in data:
+                        continue
+                    
+                    channel = data.get("arg", {}).get("channel", "")
+                    inst_id = data.get("arg", {}).get("instId", "")
+                    symbol = reverse_symbols.get(inst_id)
+                    
+                    for item in data["data"]:
+                        # Get symbol from item if not from arg
+                        if not symbol:
+                            item_inst = item.get("instId", "")
+                            symbol = reverse_symbols.get(item_inst)
+                        
+                        if not symbol:
+                            continue
+                        
+                        if channel == "tickers":
+                            bid = float(item.get("bidPx", 0) or 0)
+                            ask = float(item.get("askPx", 0) or 0)
+                            last = float(item.get("last", 0) or 0)
                             
-                            if symbol:
-                                bid = float(ticker.get("bidPx", 0) or 0)
-                                ask = float(ticker.get("askPx", 0) or 0)
-                                last = float(ticker.get("last", 0) or 0)
-                                
-                                if bid > 0 and ask > 0:
-                                    mid_price = (bid + ask) / 2
-                                elif last > 0:
-                                    mid_price = last
-                                    bid = ask = last
-                                else:
-                                    continue
-                                    
+                            if bid > 0 and ask > 0:
+                                mid_price = (bid + ask) / 2
                                 await self._update_price(symbol, "okx_futures", mid_price, bid, ask)
+                            
+                            # 24h stats from ticker
+                            vol = float(item.get("vol24h", 0) or 0)
+                            volCcy = float(item.get("volCcy24h", 0) or 0)
+                            high = float(item.get("high24h", 0) or 0)
+                            low = float(item.get("low24h", 0) or 0)
+                            await self._update_ticker_24h(symbol, "okx_futures", vol, volCcy, high, low, 0, 0)
+                        
+                        elif channel == "books5":
+                            bids = [[float(b[0]), float(b[1])] for b in item.get("bids", [])]
+                            asks = [[float(a[0]), float(a[1])] for a in item.get("asks", [])]
+                            await self._update_orderbook(symbol, "okx_futures", bids, asks)
+                        
+                        elif channel == "trades":
+                            await self._update_trade(
+                                symbol, "okx_futures",
+                                price=float(item.get("px", 0)),
+                                quantity=float(item.get("sz", 0)),
+                                is_buyer_maker=item.get("side", "") == "sell",
+                                timestamp=int(item.get("ts", time.time() * 1000))
+                            )
+                        
+                        elif channel == "mark-price":
+                            mark = float(item.get("markPx", 0) or 0)
+                            await self._update_mark_price(symbol, "okx_futures", mark, 0, 0, 0)
+                        
+                        elif channel == "funding-rate":
+                            rate = float(item.get("fundingRate", 0) or 0)
+                            next_time = int(item.get("nextFundingTime", 0) or 0)
+                            await self._update_mark_price(symbol, "okx_futures", 0, 0, rate, next_time)
+                        
+                        elif channel == "open-interest":
+                            oi = float(item.get("oi", 0) or 0)
+                            oi_ccy = float(item.get("oiCcy", 0) or 0)
+                            await self._update_open_interest(symbol, "okx_futures", oi, oi_ccy)
+                        
+                        elif channel == "liquidation-orders":
+                            liq_inst = item.get("instId", "")
+                            liq_symbol = reverse_symbols.get(liq_inst)
+                            if liq_symbol:
+                                await self._update_liquidation(
+                                    liq_symbol, "okx_futures",
+                                    side=item.get("side", ""),
+                                    price=float(item.get("bkPx", 0)),
+                                    quantity=float(item.get("sz", 0)),
+                                    timestamp=int(item.get("ts", time.time() * 1000))
+                                )
+                                
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"OKX parse error: {e}")
     
     async def _connect_bybit_spot(self):
-        """Connect to Bybit Spot WebSocket."""
+        """Connect to Bybit Spot WebSocket - ALL streams."""
         url = "wss://stream.bybit.com/v5/public/spot"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to tickers
-            subscribe_msg = {
-                "op": "subscribe",
-                "args": [f"tickers.{sym}" for sym in self.SUPPORTED_SYMBOLS]
-            }
+            # Subscribe to ALL available spot streams
+            args = []
+            for sym in self.SUPPORTED_SYMBOLS:
+                args.extend([
+                    f"tickers.{sym}",           # Ticker with bid/ask/volume
+                    f"orderbook.50.{sym}",      # Top 50 orderbook levels
+                    f"publicTrade.{sym}",       # Public trades
+                ])
+            
+            subscribe_msg = {"op": "subscribe", "args": args}
             await ws.send(json.dumps(subscribe_msg))
             
             self.connected_exchanges["bybit_spot"] = True
-            logger.info("✓ Connected to Bybit Spot")
+            logger.info("✓ Connected to Bybit Spot (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
@@ -324,52 +605,102 @@ class DirectExchangeClient:
                 try:
                     data = json.loads(message)
                     topic = data.get("topic", "")
+                    payload = data.get("data", {})
+                    
+                    # Extract symbol from topic
+                    symbol = None
+                    for sym in self.SUPPORTED_SYMBOLS:
+                        if sym in topic:
+                            symbol = sym
+                            break
+                    
+                    if not symbol:
+                        continue
                     
                     if topic.startswith("tickers."):
-                        ticker_data = data.get("data", {})
-                        symbol = ticker_data.get("symbol", "").upper()
-                        if symbol in self.SUPPORTED_SYMBOLS:
-                            bid = float(ticker_data.get("bid1Price", 0) or 0)
-                            ask = float(ticker_data.get("ask1Price", 0) or 0)
-                            last = float(ticker_data.get("lastPrice", 0) or 0)
-                            
-                            if bid > 0 and ask > 0:
-                                mid_price = (bid + ask) / 2
-                            elif last > 0:
-                                mid_price = last
-                                bid = ask = last
-                            else:
-                                continue
-                                
+                        bid = float(payload.get("bid1Price", 0) or 0)
+                        ask = float(payload.get("ask1Price", 0) or 0)
+                        last = float(payload.get("lastPrice", 0) or 0)
+                        
+                        if bid > 0 and ask > 0:
+                            mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "bybit_spot", mid_price, bid, ask)
+                        
+                        # 24h stats
+                        volume = float(payload.get("volume24h", 0) or 0)
+                        turnover = float(payload.get("turnover24h", 0) or 0)
+                        high = float(payload.get("highPrice24h", 0) or 0)
+                        low = float(payload.get("lowPrice24h", 0) or 0)
+                        change_pct = float(payload.get("price24hPcnt", 0) or 0) * 100
+                        await self._update_ticker_24h(symbol, "bybit_spot", volume, turnover, high, low, change_pct, 0)
+                    
+                    elif topic.startswith("orderbook."):
+                        bids = [[float(b[0]), float(b[1])] for b in payload.get("b", [])]
+                        asks = [[float(a[0]), float(a[1])] for a in payload.get("a", [])]
+                        await self._update_orderbook(symbol, "bybit_spot", bids, asks)
+                    
+                    elif topic.startswith("publicTrade."):
+                        trades = payload if isinstance(payload, list) else [payload]
+                        for trade in trades:
+                            await self._update_trade(
+                                symbol, "bybit_spot",
+                                price=float(trade.get("p", 0)),
+                                quantity=float(trade.get("v", 0)),
+                                is_buyer_maker=trade.get("S", "") == "Sell",
+                                timestamp=int(trade.get("T", time.time() * 1000))
+                            )
+                            
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"Bybit spot parse error: {e}")
     
     async def _connect_kraken_futures(self):
-        """Connect to Kraken Futures WebSocket."""
+        """Connect to Kraken Futures WebSocket - ALL streams."""
         url = "wss://futures.kraken.com/ws/v1"
         
-        # Kraken uses different symbol format (PI_BTCUSD for perpetual)
+        # Kraken uses different symbol format (PF = Perpetual Futures)
         kraken_symbols = {
-            "BTCUSDT": "PF_BTCUSD",  # PF = Perpetual Futures
+            "BTCUSDT": "PF_BTCUSD",
             "ETHUSDT": "PF_ETHUSD",
             "SOLUSDT": "PF_SOLUSD",
             "XRPUSDT": "PF_XRPUSD"
         }
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to ticker
-            subscribe_msg = {
+            product_ids = list(kraken_symbols.values())
+            
+            # Subscribe to multiple feeds
+            # Ticker feed
+            await ws.send(json.dumps({
                 "event": "subscribe",
                 "feed": "ticker",
-                "product_ids": list(kraken_symbols.values())
-            }
-            await ws.send(json.dumps(subscribe_msg))
+                "product_ids": product_ids
+            }))
+            
+            # Orderbook feed
+            await ws.send(json.dumps({
+                "event": "subscribe",
+                "feed": "book",
+                "product_ids": product_ids
+            }))
+            
+            # Trade feed
+            await ws.send(json.dumps({
+                "event": "subscribe",
+                "feed": "trade",
+                "product_ids": product_ids
+            }))
+            
+            # Open interest feed
+            await ws.send(json.dumps({
+                "event": "subscribe",
+                "feed": "open_interest",
+                "product_ids": product_ids
+            }))
             
             self.connected_exchanges["kraken_futures"] = True
-            logger.info("✓ Connected to Kraken Futures")
+            logger.info("✓ Connected to Kraken Futures (ALL STREAMS)")
             
             # Reverse mapping
             reverse_symbols = {v: k for k, v in kraken_symbols.items()}
@@ -379,32 +710,70 @@ class DirectExchangeClient:
                     break
                 try:
                     data = json.loads(message)
+                    feed = data.get("feed", "")
+                    product_id = data.get("product_id", "")
+                    symbol = reverse_symbols.get(product_id)
                     
-                    if data.get("feed") == "ticker":
-                        product_id = data.get("product_id", "")
-                        symbol = reverse_symbols.get(product_id)
+                    if feed == "ticker" and symbol:
+                        bid = float(data.get("bid", 0) or 0)
+                        ask = float(data.get("ask", 0) or 0)
+                        last = float(data.get("last", 0) or 0)
                         
-                        if symbol:
-                            bid = float(data.get("bid", 0) or 0)
-                            ask = float(data.get("ask", 0) or 0)
-                            last = float(data.get("last", 0) or 0)
-                            
-                            if bid > 0 and ask > 0:
-                                mid_price = (bid + ask) / 2
-                            elif last > 0:
-                                mid_price = last
-                                bid = ask = last
-                            else:
-                                continue
-                                
+                        if bid > 0 and ask > 0:
+                            mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "kraken_futures", mid_price, bid, ask)
+                        
+                        # Funding rate from ticker
+                        funding_rate = float(data.get("fundingRate", 0) or 0)
+                        funding_rate_pred = float(data.get("fundingRatePrediction", 0) or 0)
+                        mark = float(data.get("markPrice", 0) or 0)
+                        index = float(data.get("indexPrice", 0) or 0)
+                        next_funding = int(data.get("nextFundingRateTime", 0) or 0)
+                        
+                        if funding_rate != 0 or mark > 0:
+                            await self._update_mark_price(symbol, "kraken_futures", mark, index, funding_rate, next_funding)
+                        
+                        # 24h stats
+                        vol = float(data.get("vol24h", 0) or 0)
+                        open_price = float(data.get("open24h", 0) or 0)
+                        high = float(data.get("high24h", 0) or 0)
+                        low = float(data.get("low24h", 0) or 0)
+                        change_pct = ((last - open_price) / open_price * 100) if open_price > 0 else 0
+                        await self._update_ticker_24h(symbol, "kraken_futures", vol, 0, high, low, change_pct, 0)
+                        
+                        # Open interest from ticker
+                        oi = float(data.get("openInterest", 0) or 0)
+                        if oi > 0:
+                            await self._update_open_interest(symbol, "kraken_futures", oi, 0)
+                    
+                    elif feed == "book_snapshot" and symbol:
+                        bids = [[float(b["price"]), float(b["qty"])] for b in data.get("bids", [])[:10]]
+                        asks = [[float(a["price"]), float(a["qty"])] for a in data.get("asks", [])[:10]]
+                        await self._update_orderbook(symbol, "kraken_futures", bids, asks)
+                    
+                    elif feed == "trade" and symbol:
+                        trades = data.get("trades", [data]) if "trades" in data else [data]
+                        for trade in trades:
+                            side = trade.get("side", "")
+                            await self._update_trade(
+                                symbol, "kraken_futures",
+                                price=float(trade.get("price", 0)),
+                                quantity=float(trade.get("qty", 0)),
+                                is_buyer_maker=side == "sell",
+                                timestamp=int(trade.get("time", time.time() * 1000))
+                            )
+                    
+                    elif feed == "open_interest" and symbol:
+                        oi = float(data.get("openInterest", 0) or 0)
+                        await self._update_open_interest(symbol, "kraken_futures", oi, 0)
+                        
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"Kraken parse error: {e}")
     
     async def _connect_gate_futures(self):
-        """Connect to Gate.io Futures WebSocket."""
+        """Connect to Gate.io Futures WebSocket - ALL streams."""
         url = "wss://fx-ws.gateio.ws/v4/ws/usdt"
         
         # Gate uses format like "BTC_USDT"
@@ -414,51 +783,118 @@ class DirectExchangeClient:
             "SOLUSDT": "SOL_USDT",
             "XRPUSDT": "XRP_USDT"
         }
+        contracts = list(gate_symbols.values())
+        reverse_symbols = {v: k for k, v in gate_symbols.items()}
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to tickers
-            subscribe_msg = {
-                "time": int(time.time()),
-                "channel": "futures.tickers",
-                "event": "subscribe",
-                "payload": list(gate_symbols.values())
-            }
-            await ws.send(json.dumps(subscribe_msg))
+            # Subscribe to multiple channels
+            channels = [
+                ("futures.tickers", contracts),          # Ticker with price/funding
+                ("futures.order_book", contracts),       # Orderbook
+                ("futures.trades", contracts),           # Trades
+                ("futures.liquidates", contracts),       # Liquidations
+            ]
+            
+            for channel, payload in channels:
+                subscribe_msg = {
+                    "time": int(time.time()),
+                    "channel": channel,
+                    "event": "subscribe",
+                    "payload": payload
+                }
+                await ws.send(json.dumps(subscribe_msg))
             
             self.connected_exchanges["gate_futures"] = True
-            logger.info("✓ Connected to Gate.io Futures")
-            
-            # Reverse mapping
-            reverse_symbols = {v: k for k, v in gate_symbols.items()}
+            logger.info("✓ Connected to Gate.io Futures (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
                     break
                 try:
                     data = json.loads(message)
+                    channel = data.get("channel", "")
+                    event = data.get("event", "")
+                    result = data.get("result", {})
                     
-                    if data.get("channel") == "futures.tickers" and data.get("event") == "update":
-                        result = data.get("result", [])
-                        for ticker in result if isinstance(result, list) else [result]:
+                    if event != "update":
+                        continue
+                    
+                    if channel == "futures.tickers":
+                        items = result if isinstance(result, list) else [result]
+                        for ticker in items:
                             contract = ticker.get("contract", "")
                             symbol = reverse_symbols.get(contract)
                             
                             if symbol:
                                 last = float(ticker.get("last", 0) or 0)
                                 mark = float(ticker.get("mark_price", 0) or 0)
+                                index = float(ticker.get("index_price", 0) or 0)
                                 
                                 if last > 0:
-                                    # Gate doesn't provide bid/ask in ticker, use last price
                                     await self._update_price(symbol, "gate_futures", last, last, last)
-                                elif mark > 0:
-                                    await self._update_price(symbol, "gate_futures", mark, mark, mark)
+                                
+                                # Funding rate
+                                funding = float(ticker.get("funding_rate", 0) or 0)
+                                next_funding = int(ticker.get("funding_next_apply", 0) or 0)
+                                if funding != 0 or mark > 0:
+                                    await self._update_mark_price(symbol, "gate_futures", mark, index, funding, next_funding)
+                                
+                                # 24h stats
+                                vol = float(ticker.get("volume_24h", 0) or 0)
+                                vol_usd = float(ticker.get("volume_24h_usd", 0) or 0)
+                                high = float(ticker.get("high_24h", 0) or 0)
+                                low = float(ticker.get("low_24h", 0) or 0)
+                                change = float(ticker.get("change_percentage", 0) or 0)
+                                await self._update_ticker_24h(symbol, "gate_futures", vol, vol_usd, high, low, change, 0)
+                                
+                                # Open interest
+                                oi = float(ticker.get("total_size", 0) or 0)
+                                if oi > 0:
+                                    await self._update_open_interest(symbol, "gate_futures", oi, vol_usd)
+                    
+                    elif channel == "futures.order_book":
+                        contract = result.get("contract", "")
+                        symbol = reverse_symbols.get(contract)
+                        if symbol:
+                            bids = [[float(b["p"]), float(b["s"])] for b in result.get("bids", [])[:10]]
+                            asks = [[float(a["p"]), float(a["s"])] for a in result.get("asks", [])[:10]]
+                            await self._update_orderbook(symbol, "gate_futures", bids, asks)
+                    
+                    elif channel == "futures.trades":
+                        trades = result if isinstance(result, list) else [result]
+                        for trade in trades:
+                            contract = trade.get("contract", "")
+                            symbol = reverse_symbols.get(contract)
+                            if symbol:
+                                await self._update_trade(
+                                    symbol, "gate_futures",
+                                    price=float(trade.get("price", 0)),
+                                    quantity=float(trade.get("size", 0)),
+                                    is_buyer_maker=trade.get("side") == "sell",
+                                    timestamp=int(trade.get("create_time", time.time()) * 1000)
+                                )
+                    
+                    elif channel == "futures.liquidates":
+                        liqs = result if isinstance(result, list) else [result]
+                        for liq in liqs:
+                            contract = liq.get("contract", "")
+                            symbol = reverse_symbols.get(contract)
+                            if symbol:
+                                await self._update_liquidation(
+                                    symbol, "gate_futures",
+                                    side=liq.get("side", ""),
+                                    price=float(liq.get("price", 0)),
+                                    quantity=float(liq.get("size", 0)),
+                                    timestamp=int(liq.get("time", time.time()) * 1000)
+                                )
+                                
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
                     logger.debug(f"Gate parse error: {e}")
     
     async def _connect_hyperliquid(self):
-        """Connect to Hyperliquid WebSocket."""
+        """Connect to Hyperliquid WebSocket - ALL streams."""
         url = "wss://api.hyperliquid.xyz/ws"
         
         # Hyperliquid uses simple symbols like "BTC", "ETH"
@@ -468,35 +904,94 @@ class DirectExchangeClient:
             "SOLUSDT": "SOL",
             "XRPUSDT": "XRP"
         }
+        reverse_symbols = {v: k for k, v in hl_symbols.items()}
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to all mids (mid prices)
-            subscribe_msg = {
+            # Subscribe to multiple streams
+            # 1. All mids (mid prices for all assets)
+            await ws.send(json.dumps({
                 "method": "subscribe",
                 "subscription": {"type": "allMids"}
-            }
-            await ws.send(json.dumps(subscribe_msg))
+            }))
+            
+            # 2. L2 Orderbook for each symbol
+            for hl_sym in hl_symbols.values():
+                await ws.send(json.dumps({
+                    "method": "subscribe",
+                    "subscription": {"type": "l2Book", "coin": hl_sym}
+                }))
+            
+            # 3. Trades for each symbol
+            for hl_sym in hl_symbols.values():
+                await ws.send(json.dumps({
+                    "method": "subscribe",
+                    "subscription": {"type": "trades", "coin": hl_sym}
+                }))
+            
+            # 4. User fills / liquidations (public)
+            await ws.send(json.dumps({
+                "method": "subscribe",
+                "subscription": {"type": "activeAssetCtx"}
+            }))
             
             self.connected_exchanges["hyperliquid_futures"] = True
-            logger.info("✓ Connected to Hyperliquid")
-            
-            # Reverse mapping
-            reverse_symbols = {v: k for k, v in hl_symbols.items()}
+            logger.info("✓ Connected to Hyperliquid (ALL STREAMS)")
             
             async for message in ws:
                 if not self._running:
                     break
                 try:
                     data = json.loads(message)
+                    channel = data.get("channel", "")
+                    payload = data.get("data", {})
                     
-                    if data.get("channel") == "allMids":
-                        mids = data.get("data", {}).get("mids", {})
-                        
+                    if channel == "allMids":
+                        mids = payload.get("mids", {})
                         for hl_sym, our_sym in reverse_symbols.items():
                             if hl_sym in mids:
                                 mid_price = float(mids[hl_sym])
                                 if mid_price > 0:
                                     await self._update_price(our_sym, "hyperliquid_futures", mid_price, mid_price, mid_price)
+                    
+                    elif channel == "l2Book":
+                        coin = payload.get("coin", "")
+                        symbol = reverse_symbols.get(coin)
+                        if symbol:
+                            book = payload.get("levels", [[], []])
+                            # levels[0] = bids, levels[1] = asks
+                            bids = [[float(b["px"]), float(b["sz"])] for b in book[0][:10]] if len(book) > 0 else []
+                            asks = [[float(a["px"]), float(a["sz"])] for a in book[1][:10]] if len(book) > 1 else []
+                            await self._update_orderbook(symbol, "hyperliquid_futures", bids, asks)
+                    
+                    elif channel == "trades":
+                        trades = payload if isinstance(payload, list) else [payload]
+                        for trade in trades:
+                            coin = trade.get("coin", "")
+                            symbol = reverse_symbols.get(coin)
+                            if symbol:
+                                await self._update_trade(
+                                    symbol, "hyperliquid_futures",
+                                    price=float(trade.get("px", 0)),
+                                    quantity=float(trade.get("sz", 0)),
+                                    is_buyer_maker=trade.get("side", "") == "A",  # A = ask (sell)
+                                    timestamp=int(trade.get("time", time.time() * 1000))
+                                )
+                    
+                    elif channel == "activeAssetCtx":
+                        # Contains funding rates and open interest
+                        for ctx in payload if isinstance(payload, list) else [payload]:
+                            coin = ctx.get("coin", "")
+                            symbol = reverse_symbols.get(coin)
+                            if symbol:
+                                funding = float(ctx.get("funding", 0) or 0)
+                                oi = float(ctx.get("openInterest", 0) or 0)
+                                mark = float(ctx.get("markPx", 0) or 0)
+                                
+                                if funding != 0 or mark > 0:
+                                    await self._update_mark_price(symbol, "hyperliquid_futures", mark, 0, funding, 0)
+                                if oi > 0:
+                                    await self._update_open_interest(symbol, "hyperliquid_futures", oi, 0)
+                                    
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
@@ -578,6 +1073,136 @@ class DirectExchangeClient:
         
         # Check for arbitrage opportunities
         await self._check_arbitrage(symbol)
+    
+    async def _update_orderbook(self, symbol: str, exchange: str, bids: List, asks: List):
+        """Update orderbook depth data."""
+        timestamp = int(time.time() * 1000)
+        
+        async with self._lock:
+            # Parse bids and asks (format: [[price, qty], ...])
+            parsed_bids = []
+            parsed_asks = []
+            
+            for bid in bids[:10]:  # Top 10 levels
+                if isinstance(bid, list) and len(bid) >= 2:
+                    parsed_bids.append({
+                        "price": float(bid[0]),
+                        "quantity": float(bid[1])
+                    })
+            
+            for ask in asks[:10]:
+                if isinstance(ask, list) and len(ask) >= 2:
+                    parsed_asks.append({
+                        "price": float(ask[0]),
+                        "quantity": float(ask[1])
+                    })
+            
+            self.orderbooks[symbol][exchange] = {
+                "bids": parsed_bids,
+                "asks": parsed_asks,
+                "timestamp": timestamp,
+                "exchange": exchange,
+                "bid_depth": sum(b["quantity"] for b in parsed_bids),
+                "ask_depth": sum(a["quantity"] for a in parsed_asks),
+                "spread": parsed_asks[0]["price"] - parsed_bids[0]["price"] if parsed_bids and parsed_asks else 0,
+                "spread_pct": ((parsed_asks[0]["price"] - parsed_bids[0]["price"]) / parsed_bids[0]["price"] * 100) if parsed_bids and parsed_asks and parsed_bids[0]["price"] > 0 else 0
+            }
+    
+    async def _update_trade(self, symbol: str, exchange: str, price: float, quantity: float, 
+                           is_buyer_maker: bool, timestamp: int):
+        """Update trade stream data."""
+        trade = {
+            "price": price,
+            "quantity": quantity,
+            "side": "sell" if is_buyer_maker else "buy",  # If buyer is maker, taker sold
+            "value": price * quantity,
+            "timestamp": timestamp,
+            "exchange": exchange
+        }
+        
+        async with self._lock:
+            if exchange not in self.trades[symbol]:
+                self.trades[symbol][exchange] = []
+            
+            self.trades[symbol][exchange].insert(0, trade)
+            
+            # Keep only recent trades
+            if len(self.trades[symbol][exchange]) > self.max_trades_per_symbol:
+                self.trades[symbol][exchange] = self.trades[symbol][exchange][:self.max_trades_per_symbol]
+    
+    async def _update_mark_price(self, symbol: str, exchange: str, mark_price: float, 
+                                 index_price: float, funding_rate: float, next_funding_time: int):
+        """Update mark price and funding rate."""
+        timestamp = int(time.time() * 1000)
+        
+        async with self._lock:
+            self.mark_prices[symbol][exchange] = {
+                "mark_price": mark_price,
+                "index_price": index_price,
+                "basis": mark_price - index_price if index_price > 0 else 0,
+                "basis_pct": ((mark_price - index_price) / index_price * 100) if index_price > 0 else 0,
+                "timestamp": timestamp,
+                "exchange": exchange
+            }
+            
+            self.funding_rates[symbol][exchange] = {
+                "rate": funding_rate,
+                "rate_pct": funding_rate * 100,
+                "annualized_rate": funding_rate * 3 * 365 * 100,  # 8hr funding * 3 * 365
+                "next_funding_time": next_funding_time,
+                "timestamp": timestamp,
+                "exchange": exchange
+            }
+    
+    async def _update_liquidation(self, symbol: str, exchange: str, side: str, 
+                                  price: float, quantity: float, timestamp: int):
+        """Update liquidation events."""
+        liquidation = {
+            "side": side,
+            "price": price,
+            "quantity": quantity,
+            "value": price * quantity,
+            "timestamp": timestamp,
+            "exchange": exchange,
+            "detected_at": datetime.utcnow().isoformat()
+        }
+        
+        async with self._lock:
+            self.liquidations[symbol].insert(0, liquidation)
+            
+            if len(self.liquidations[symbol]) > self.max_liquidations:
+                self.liquidations[symbol] = self.liquidations[symbol][:self.max_liquidations]
+    
+    async def _update_ticker_24h(self, symbol: str, exchange: str, volume: float, 
+                                 quote_volume: float, high: float, low: float,
+                                 price_change_pct: float, trades_count: int):
+        """Update 24h ticker statistics."""
+        timestamp = int(time.time() * 1000)
+        
+        async with self._lock:
+            self.ticker_24h[symbol][exchange] = {
+                "volume": volume,
+                "quote_volume": quote_volume,
+                "high_24h": high,
+                "low_24h": low,
+                "price_change_pct": price_change_pct,
+                "trades_count": trades_count,
+                "timestamp": timestamp,
+                "exchange": exchange
+            }
+    
+    async def _update_open_interest(self, symbol: str, exchange: str, 
+                                    open_interest: float, open_interest_value: float):
+        """Update open interest data."""
+        timestamp = int(time.time() * 1000)
+        
+        async with self._lock:
+            self.open_interest[symbol][exchange] = {
+                "open_interest": open_interest,
+                "open_interest_value": open_interest_value,
+                "timestamp": timestamp,
+                "exchange": exchange
+            }
     
     async def _check_arbitrage(self, symbol: str):
         """Check for arbitrage opportunities after price update."""
@@ -743,6 +1368,185 @@ class DirectExchangeClient:
             opportunities = [o for o in opportunities if o.get("profit_pct", 0) >= min_profit]
         
         return opportunities[:limit]
+    
+    async def get_orderbooks(self, symbol: Optional[str] = None, exchange: Optional[str] = None) -> Dict:
+        """
+        Get orderbook data from all or specific exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            exchange: Specific exchange or None for all
+            
+        Returns:
+            Dict with orderbook data including bids, asks, depth, spread
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            result = {}
+            symbols = [symbol] if symbol else self.SUPPORTED_SYMBOLS
+            
+            for sym in symbols:
+                sym_data = self.orderbooks.get(sym, {})
+                if exchange:
+                    if exchange in sym_data:
+                        result[sym] = {exchange: sym_data[exchange]}
+                else:
+                    if sym_data:
+                        result[sym] = dict(sym_data)
+            
+            return result
+    
+    async def get_trades(self, symbol: Optional[str] = None, exchange: Optional[str] = None, limit: int = 50) -> Dict:
+        """
+        Get recent trades from all or specific exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            exchange: Specific exchange or None for all
+            limit: Max trades per exchange
+            
+        Returns:
+            Dict with trade data including price, quantity, side, value
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            result = {}
+            symbols = [symbol] if symbol else self.SUPPORTED_SYMBOLS
+            
+            for sym in symbols:
+                sym_data = self.trades.get(sym, {})
+                if sym_data:
+                    result[sym] = {}
+                    for ex, trades in sym_data.items():
+                        if exchange and ex != exchange:
+                            continue
+                        result[sym][ex] = trades[:limit]
+            
+            return result
+    
+    async def get_funding_rates(self, symbol: Optional[str] = None) -> Dict:
+        """
+        Get funding rates from all exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            
+        Returns:
+            Dict with funding rate data including rate_pct, annualized_rate
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: dict(self.funding_rates.get(symbol, {}))}
+            return {sym: dict(data) for sym, data in self.funding_rates.items() if data}
+    
+    async def get_mark_prices(self, symbol: Optional[str] = None) -> Dict:
+        """
+        Get mark prices and basis from all exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            
+        Returns:
+            Dict with mark_price, index_price, basis, basis_pct
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: dict(self.mark_prices.get(symbol, {}))}
+            return {sym: dict(data) for sym, data in self.mark_prices.items() if data}
+    
+    async def get_liquidations(self, symbol: Optional[str] = None, limit: int = 20) -> Dict:
+        """
+        Get recent liquidation events.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            limit: Max liquidations to return
+            
+        Returns:
+            Dict with liquidation events including side, price, quantity, value
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: self.liquidations.get(symbol, [])[:limit]}
+            return {sym: liqs[:limit] for sym, liqs in self.liquidations.items() if liqs}
+    
+    async def get_open_interest(self, symbol: Optional[str] = None) -> Dict:
+        """
+        Get open interest from all exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            
+        Returns:
+            Dict with open_interest and open_interest_value per exchange
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: dict(self.open_interest.get(symbol, {}))}
+            return {sym: dict(data) for sym, data in self.open_interest.items() if data}
+    
+    async def get_ticker_24h(self, symbol: Optional[str] = None) -> Dict:
+        """
+        Get 24h ticker statistics from all exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            
+        Returns:
+            Dict with volume, high, low, price_change_pct per exchange
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: dict(self.ticker_24h.get(symbol, {}))}
+            return {sym: dict(data) for sym, data in self.ticker_24h.items() if data}
+    
+    async def get_market_summary(self, symbol: str) -> Dict:
+        """
+        Get comprehensive market summary for a symbol across all exchanges.
+        
+        Args:
+            symbol: Symbol to get summary for
+            
+        Returns:
+            Dict with prices, orderbooks, funding, OI, 24h stats combined
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            return {
+                "symbol": symbol,
+                "prices": dict(self.prices.get(symbol, {})),
+                "orderbooks": dict(self.orderbooks.get(symbol, {})),
+                "funding_rates": dict(self.funding_rates.get(symbol, {})),
+                "mark_prices": dict(self.mark_prices.get(symbol, {})),
+                "open_interest": dict(self.open_interest.get(symbol, {})),
+                "ticker_24h": dict(self.ticker_24h.get(symbol, {})),
+                "recent_trades_count": {
+                    ex: len(trades) for ex, trades in self.trades.get(symbol, {}).items()
+                },
+                "recent_liquidations": self.liquidations.get(symbol, [])[:5],
+                "timestamp": datetime.utcnow().isoformat()
+            }
     
     async def health_check(self) -> Dict:
         """

@@ -40,7 +40,16 @@ from src.tools.crypto_arbitrage_tool import (
     get_exchange_prices,
     get_spread_matrix,
     get_recent_opportunities,
-    arbitrage_scanner_health
+    arbitrage_scanner_health,
+    # New data stream tools
+    get_orderbooks,
+    get_trades,
+    get_funding_rates,
+    get_liquidations,
+    get_open_interest,
+    get_mark_prices,
+    get_ticker_24h,
+    get_market_summary
 )
 
 # Initialize MCP server
@@ -323,6 +332,229 @@ async def compare_exchange_prices(
 
 
 # ============================================================================
+# NEW DATA STREAM MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def get_orderbook_data(
+    symbol: str = None,
+    exchange: str = None
+) -> str:
+    """
+    Get real-time orderbook depth from all connected exchanges.
+    
+    Shows top 10 bid/ask levels, spread, and depth imbalance for each exchange.
+    Useful for analyzing market microstructure and liquidity.
+    
+    Args:
+        symbol: Specific symbol (BTCUSDT, ETHUSDT, etc.) or None for all
+        exchange: Specific exchange ID or None for all exchanges
+    
+    Returns:
+        XML with orderbook depth including spread, bids, asks, and imbalance.
+    
+    Example:
+        "Show me the BTC orderbook on all exchanges" → get_orderbook_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting orderbook data for {symbol or 'all'} on {exchange or 'all exchanges'}")
+        return await get_orderbooks(symbol=symbol, exchange=exchange)
+    except Exception as e:
+        logger.error(f"Error getting orderbook data: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="ORDERBOOK_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_recent_trades(
+    symbol: str = None,
+    exchange: str = None,
+    limit: int = 50
+) -> str:
+    """
+    Get recent trades from all connected exchanges.
+    
+    Shows individual trades with price, quantity, side (buy/sell), and aggregated
+    volume statistics including buy/sell ratio.
+    
+    Args:
+        symbol: Specific symbol or None for all
+        exchange: Specific exchange or None for all
+        limit: Maximum trades per exchange (default 50)
+    
+    Returns:
+        XML with recent trades and volume statistics.
+    
+    Example:
+        "Show me recent BTC trades" → get_recent_trades(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting recent trades for {symbol or 'all'}")
+        return await get_trades(symbol=symbol, exchange=exchange, limit=limit)
+    except Exception as e:
+        logger.error(f"Error getting trades: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="TRADES_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_funding_rate_data(symbol: str = None) -> str:
+    """
+    Get funding rates from all futures exchanges.
+    
+    Funding rates indicate market sentiment - positive rates mean longs pay shorts
+    (bullish sentiment), negative rates mean shorts pay longs (bearish sentiment).
+    
+    Args:
+        symbol: Specific symbol or None for all tracked symbols
+    
+    Returns:
+        XML with funding rates, annualized rates, and sentiment indicators.
+    
+    Example:
+        "What are the current BTC funding rates?" → get_funding_rate_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting funding rates for {symbol or 'all'}")
+        return await get_funding_rates(symbol=symbol)
+    except Exception as e:
+        logger.error(f"Error getting funding rates: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="FUNDING_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_liquidation_data(symbol: str = None, limit: int = 20) -> str:
+    """
+    Get recent liquidation events from exchanges.
+    
+    Shows forced liquidations (margin calls) with side, price, quantity, and value.
+    Large liquidations often indicate market volatility and potential reversals.
+    
+    Args:
+        symbol: Specific symbol or None for all
+        limit: Maximum liquidations to return (default 20)
+    
+    Returns:
+        XML with liquidation events and aggregated long/short liquidation totals.
+    
+    Example:
+        "Show me recent BTC liquidations" → get_liquidation_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting liquidations for {symbol or 'all'}")
+        return await get_liquidations(symbol=symbol, limit=limit)
+    except Exception as e:
+        logger.error(f"Error getting liquidations: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="LIQUIDATIONS_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_open_interest_data(symbol: str = None) -> str:
+    """
+    Get open interest from all futures exchanges.
+    
+    Open interest represents total outstanding derivative contracts.
+    Rising OI with price = strong trend, Falling OI = weakening trend.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML with open interest per exchange and totals.
+    
+    Example:
+        "What's the BTC open interest across exchanges?" → get_open_interest_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting open interest for {symbol or 'all'}")
+        return await get_open_interest(symbol=symbol)
+    except Exception as e:
+        logger.error(f"Error getting open interest: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="OI_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_mark_price_data(symbol: str = None) -> str:
+    """
+    Get mark prices and basis from futures exchanges.
+    
+    Mark price is the fair price used for liquidations. Basis is the difference
+    between futures and spot - positive basis (contango) means bullish sentiment.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML with mark prices, index prices, basis, and basis percentage.
+    
+    Example:
+        "What's the BTC futures basis?" → get_mark_price_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting mark prices for {symbol or 'all'}")
+        return await get_mark_prices(symbol=symbol)
+    except Exception as e:
+        logger.error(f"Error getting mark prices: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="MARK_PRICE_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_24h_ticker_data(symbol: str = None) -> str:
+    """
+    Get 24-hour ticker statistics from all exchanges.
+    
+    Shows volume, high/low, price change percentage, and trade counts
+    for the last 24 hours.
+    
+    Args:
+        symbol: Specific symbol or None for all
+    
+    Returns:
+        XML with 24h statistics per exchange.
+    
+    Example:
+        "What's BTC 24h volume across exchanges?" → get_24h_ticker_data(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting 24h ticker for {symbol or 'all'}")
+        return await get_ticker_24h(symbol=symbol)
+    except Exception as e:
+        logger.error(f"Error getting 24h ticker: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="TICKER_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_market_overview(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive market overview combining all data for a symbol.
+    
+    Aggregates prices, orderbooks, funding rates, open interest, 24h stats,
+    recent trades, and liquidations into a single comprehensive view.
+    
+    Args:
+        symbol: Symbol to analyze (default BTCUSDT)
+    
+    Returns:
+        XML with complete market summary across all exchanges.
+    
+    Example:
+        "Give me a complete BTC market overview" → get_market_overview(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting market overview for {symbol}")
+        return await get_market_summary(symbol=symbol)
+    except Exception as e:
+        logger.error(f"Error getting market overview: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="SUMMARY_FAILED"><message>{str(e)}</message></error>"""
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
@@ -361,6 +593,14 @@ def main():
     logger.info("    • get_arbitrage_opportunities  - Recent detected opportunities")
     logger.info("    • compare_exchange_prices      - Compare two specific exchanges")
     logger.info("    • crypto_scanner_health        - Check scanner connectivity")
+    logger.info("    • get_orderbook_data           - Real-time orderbook depth")
+    logger.info("    • get_recent_trades            - Recent trades and volume stats")
+    logger.info("    • get_funding_rate_data        - Funding rates and sentiment")
+    logger.info("    • get_liquidation_data         - Recent liquidation events")
+    logger.info("    • get_open_interest_data       - Open interest per exchange")
+    logger.info("    • get_mark_price_data          - Mark prices and basis")
+    logger.info("    • get_24h_ticker_data          - 24h volume and statistics")
+    logger.info("    • get_market_overview          - Complete market summary")
     logger.info("")
     logger.info("  SUPPORTED SYMBOLS: BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT")
     logger.info("=" * 70)
