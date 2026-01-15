@@ -558,9 +558,16 @@ async def get_market_overview(symbol: str = "BTCUSDT") -> str:
 # ADVANCED ANALYTICS MCP TOOLS (Feature Intelligence Framework)
 # ============================================================================
 
-# Initialize analytics engine
-from src.analytics import FeatureEngine
-_feature_engine = FeatureEngine()
+# Lazy-loaded analytics engine (initialized on first use to improve startup time)
+_feature_engine = None
+
+def _get_feature_engine():
+    """Get or create the feature engine (lazy initialization)."""
+    global _feature_engine
+    if _feature_engine is None:
+        from src.analytics import FeatureEngine
+        _feature_engine = FeatureEngine()
+    return _feature_engine
 
 
 @mcp.tool()
@@ -624,7 +631,8 @@ async def get_market_intelligence(
         }
         
         # Compute features
-        result = await _feature_engine.compute_all_features(symbol, data)
+        feature_engine = _get_feature_engine()
+        result = await feature_engine.compute_all_features(symbol, data)
         
         # Format as XML
         return _format_intelligence_xml(result, layers)
@@ -1265,7 +1273,8 @@ async def get_analytics_summary() -> str:
         "What analytics are available?" → get_analytics_summary()
     """
     try:
-        stats = _feature_engine.get_computation_stats()
+        feature_engine = _get_feature_engine()
+        stats = feature_engine.get_computation_stats()
         
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <analytics_summary>
@@ -1321,8 +1330,16 @@ async def get_analytics_summary() -> str:
 # STREAMING ANALYSIS MCP TOOLS
 # ============================================================================
 
-from src.analytics.streaming_analyzer import StreamingAnalyzer
-_streaming_analyzer = StreamingAnalyzer()
+# Lazy-loaded streaming analyzer (initialized on first use to improve startup time)
+_streaming_analyzer = None
+
+def _get_streaming_analyzer():
+    """Get or create the streaming analyzer (lazy initialization)."""
+    global _streaming_analyzer
+    if _streaming_analyzer is None:
+        from src.analytics.streaming_analyzer import StreamingAnalyzer
+        _streaming_analyzer = StreamingAnalyzer()
+    return _streaming_analyzer
 
 
 @mcp.tool()
@@ -1368,7 +1385,8 @@ async def stream_and_analyze(
             await asyncio.sleep(2.0)
         
         # Run streaming analysis
-        result = await _streaming_analyzer.analyze_stream(
+        analyzer = _get_streaming_analyzer()
+        result = await analyzer.analyze_stream(
             symbol=symbol,
             duration_seconds=duration,
             client=client
@@ -1416,7 +1434,8 @@ async def quick_analyze(symbol: str = "BTCUSDT") -> str:
             await client.connect()
             await asyncio.sleep(2.0)
         
-        result = await _streaming_analyzer.analyze_stream(
+        analyzer = _get_streaming_analyzer()
+        result = await analyzer.analyze_stream(
             symbol=symbol,
             duration_seconds=10,
             client=client,
@@ -1495,7 +1514,8 @@ async def analyze_for_duration(
             await client.connect()
             await asyncio.sleep(2.0)
         
-        result = await _streaming_analyzer.analyze_stream(
+        analyzer = _get_streaming_analyzer()
+        result = await analyzer.analyze_stream(
             symbol=symbol,
             duration_seconds=duration,
             client=client
