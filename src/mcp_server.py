@@ -1317,6 +1317,420 @@ async def get_analytics_summary() -> str:
 <error type="SUMMARY_FAILED"><message>{str(e)}</message></error>"""
 
 
+# ============================================================================
+# STREAMING ANALYSIS MCP TOOLS
+# ============================================================================
+
+from src.analytics.streaming_analyzer import StreamingAnalyzer
+_streaming_analyzer = StreamingAnalyzer()
+
+
+@mcp.tool()
+async def stream_and_analyze(
+    symbol: str = "BTCUSDT",
+    duration: int = 30
+) -> str:
+    """
+    Stream market data for a specified time and perform comprehensive analysis.
+    
+    Collects real-time data (prices, orderbooks, trades, funding, liquidations)
+    over the specified duration and computes analytics including:
+    - Price movement analysis (direction, volatility, range)
+    - Volume analysis (buy/sell ratio, large trades)
+    - Orderbook analysis (depth, spread, imbalance)
+    - Flow analysis (delta, CVD, aggressor detection)
+    - Regime detection (breakout, consolidation, etc.)
+    - Trading signals with confidence and recommendations
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT)
+        duration: Analysis duration in seconds (5-300, default 30)
+    
+    Returns:
+        XML with comprehensive analysis of the streaming period.
+    
+    Examples:
+        "Analyze BTC for 30 seconds" → stream_and_analyze(symbol="BTCUSDT", duration=30)
+        "Stream ETH data for 1 minute" → stream_and_analyze(symbol="ETHUSDT", duration=60)
+        "Quick 10 second BTC analysis" → stream_and_analyze(symbol="BTCUSDT", duration=10)
+    """
+    try:
+        # Validate duration
+        duration = max(5, min(300, duration))
+        
+        logger.info(f"Starting {duration}s streaming analysis for {symbol}")
+        
+        from src.storage.direct_exchange_client import get_exchange_client
+        client = get_exchange_client()
+        
+        if not client.connected:
+            await client.connect()
+            await asyncio.sleep(2.0)
+        
+        # Run streaming analysis
+        result = await _streaming_analyzer.analyze_stream(
+            symbol=symbol,
+            duration_seconds=duration,
+            client=client
+        )
+        
+        # Format as XML
+        return _format_streaming_analysis_xml(result)
+        
+    except Exception as e:
+        logger.error(f"Error in streaming analysis: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="STREAM_ANALYSIS_FAILED">
+  <message>Failed to stream and analyze {symbol}</message>
+  <details>{str(e)}</details>
+</error>"""
+
+
+@mcp.tool()
+async def quick_analyze(symbol: str = "BTCUSDT") -> str:
+    """
+    Quick 10-second market snapshot analysis.
+    
+    Fast analysis that streams data for 10 seconds and provides:
+    - Current price direction
+    - Buy/sell flow
+    - Orderbook imbalance
+    - Quick trading signal
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT)
+    
+    Returns:
+        XML with quick analysis results.
+    
+    Example:
+        "Quick check on BTC" → quick_analyze(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Starting quick 10s analysis for {symbol}")
+        
+        from src.storage.direct_exchange_client import get_exchange_client
+        client = get_exchange_client()
+        
+        if not client.connected:
+            await client.connect()
+            await asyncio.sleep(2.0)
+        
+        result = await _streaming_analyzer.analyze_stream(
+            symbol=symbol,
+            duration_seconds=10,
+            client=client,
+            sample_interval=0.5
+        )
+        
+        # Simplified output
+        price = result.get("price_analysis", {})
+        flow = result.get("flow_analysis", {})
+        signals = result.get("signals", {})
+        regime = result.get("regime_analysis", {})
+        
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<quick_analysis symbol="{symbol}" duration="10s">
+  <price>
+    <current>{price.get('end_price', 0)}</current>
+    <change_pct>{price.get('change_pct', 0):.4f}%</change_pct>
+    <direction>{price.get('direction', 'UNKNOWN')}</direction>
+  </price>
+  <flow>
+    <delta_pct>{flow.get('delta_pct', 0):.2f}%</delta_pct>
+    <aggressor>{flow.get('aggressor', 'UNKNOWN')}</aggressor>
+    <signal>{flow.get('flow_signal', 'NEUTRAL')}</signal>
+  </flow>
+  <regime>{regime.get('detected_regime', 'UNKNOWN')}</regime>
+  <signal>
+    <bias>{signals.get('overall_bias', 'NEUTRAL')}</bias>
+    <confidence>{signals.get('confidence', 50)}%</confidence>
+    <recommendation>{signals.get('recommendation', 'N/A')}</recommendation>
+  </signal>
+</quick_analysis>"""
+        
+    except Exception as e:
+        logger.error(f"Error in quick analysis: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="QUICK_ANALYSIS_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def analyze_for_duration(
+    symbol: str = "BTCUSDT",
+    minutes: float = 1.0,
+    focus: str = "all"
+) -> str:
+    """
+    Analyze market for a specified number of minutes.
+    
+    Flexible duration analysis with focus options:
+    - "all": Complete analysis (default)
+    - "price": Focus on price movement
+    - "flow": Focus on order flow and delta
+    - "regime": Focus on market regime detection
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT)
+        minutes: Duration in minutes (0.1 to 5.0)
+        focus: Analysis focus - "all", "price", "flow", or "regime"
+    
+    Returns:
+        XML with analysis based on specified focus.
+    
+    Examples:
+        "Analyze BTC for 2 minutes" → analyze_for_duration(symbol="BTCUSDT", minutes=2.0)
+        "1 minute flow analysis on ETH" → analyze_for_duration(symbol="ETHUSDT", minutes=1.0, focus="flow")
+    """
+    try:
+        # Convert minutes to seconds
+        duration = int(max(5, min(300, minutes * 60)))
+        
+        logger.info(f"Starting {minutes}min ({duration}s) analysis for {symbol}, focus={focus}")
+        
+        from src.storage.direct_exchange_client import get_exchange_client
+        client = get_exchange_client()
+        
+        if not client.connected:
+            await client.connect()
+            await asyncio.sleep(2.0)
+        
+        result = await _streaming_analyzer.analyze_stream(
+            symbol=symbol,
+            duration_seconds=duration,
+            client=client
+        )
+        
+        # Format based on focus
+        if focus == "price":
+            return _format_price_focus_xml(result)
+        elif focus == "flow":
+            return _format_flow_focus_xml(result)
+        elif focus == "regime":
+            return _format_regime_focus_xml(result)
+        else:
+            return _format_streaming_analysis_xml(result)
+        
+    except Exception as e:
+        logger.error(f"Error in duration analysis: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="DURATION_ANALYSIS_FAILED"><message>{str(e)}</message></error>"""
+
+
+def _format_streaming_analysis_xml(result: Dict) -> str:
+    """Format full streaming analysis as XML."""
+    symbol = result.get("symbol", "UNKNOWN")
+    duration = result.get("duration_seconds", 0)
+    samples = result.get("samples_collected", 0)
+    
+    price = result.get("price_analysis", {})
+    volume = result.get("volume_analysis", {})
+    orderbook = result.get("orderbook_analysis", {})
+    funding = result.get("funding_analysis", {})
+    liquidations = result.get("liquidation_analysis", {})
+    flow = result.get("flow_analysis", {})
+    regime = result.get("regime_analysis", {})
+    signals = result.get("signals", {})
+    data_summary = result.get("data_summary", {})
+    errors = result.get("errors", [])
+    
+    # Format errors
+    errors_xml = ""
+    if errors:
+        errors_xml = f"""
+  <errors count="{len(errors)}">"""
+        for err in errors[:5]:
+            errors_xml += f"""
+    <error>{err}</error>"""
+        errors_xml += """
+  </errors>"""
+    
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<streaming_analysis symbol="{symbol}">
+  <metadata>
+    <duration_seconds>{duration}</duration_seconds>
+    <samples_collected>{samples}</samples_collected>
+    <analysis_start>{result.get('analysis_start', '')}</analysis_start>
+    <analysis_end>{result.get('analysis_end', '')}</analysis_end>
+  </metadata>
+  
+  <data_collected>
+    <price_snapshots>{data_summary.get('price_snapshots', 0)}</price_snapshots>
+    <orderbook_snapshots>{data_summary.get('orderbook_snapshots', 0)}</orderbook_snapshots>
+    <trades>{data_summary.get('trades_collected', 0)}</trades>
+    <liquidations>{data_summary.get('liquidations_collected', 0)}</liquidations>
+  </data_collected>
+  
+  <price_analysis>
+    <start_price>{price.get('start_price', 0)}</start_price>
+    <end_price>{price.get('end_price', 0)}</end_price>
+    <high>{price.get('high', 0)}</high>
+    <low>{price.get('low', 0)}</low>
+    <change_pct>{price.get('change_pct', 0):.4f}%</change_pct>
+    <range_pct>{price.get('range_pct', 0):.4f}%</range_pct>
+    <direction>{price.get('direction', 'UNKNOWN')}</direction>
+    <volatility>{price.get('volatility', 0):.4f}</volatility>
+  </price_analysis>
+  
+  <volume_analysis>
+    <total_volume>{volume.get('total_volume', 0):.4f}</total_volume>
+    <total_value_usd>{volume.get('total_value_usd', 0):.2f}</total_value_usd>
+    <total_trades>{volume.get('total_trades', 0)}</total_trades>
+    <buy_volume>{volume.get('buy_volume', 0):.4f}</buy_volume>
+    <sell_volume>{volume.get('sell_volume', 0):.4f}</sell_volume>
+    <buy_sell_ratio>{volume.get('buy_sell_ratio', 0):.4f}</buy_sell_ratio>
+    <volume_imbalance>{volume.get('volume_imbalance', 0):.2f}%</volume_imbalance>
+    <large_trade_count>{volume.get('large_trade_count', 0)}</large_trade_count>
+  </volume_analysis>
+  
+  <orderbook_analysis>
+    <avg_spread_pct>{orderbook.get('avg_spread_pct', 0):.6f}%</avg_spread_pct>
+    <bid_depth_usd>{orderbook.get('bid_depth_usd', 0):.2f}</bid_depth_usd>
+    <ask_depth_usd>{orderbook.get('ask_depth_usd', 0):.2f}</ask_depth_usd>
+    <depth_imbalance>{orderbook.get('depth_imbalance', 0):.4f}</depth_imbalance>
+    <imbalance_signal>{orderbook.get('imbalance_signal', 'NEUTRAL')}</imbalance_signal>
+  </orderbook_analysis>
+  
+  <flow_analysis>
+    <delta>{flow.get('delta', 0):.4f}</delta>
+    <delta_pct>{flow.get('delta_pct', 0):.2f}%</delta_pct>
+    <cvd_final>{flow.get('cvd_final', 0):.4f}</cvd_final>
+    <cvd_trend>{flow.get('cvd_trend', 'FLAT')}</cvd_trend>
+    <aggressor>{flow.get('aggressor', 'BALANCED')}</aggressor>
+    <flow_signal>{flow.get('flow_signal', 'NEUTRAL')}</flow_signal>
+  </flow_analysis>
+  
+  <funding_analysis>
+    <avg_rate>{funding.get('avg_funding_rate', 0):.8f}</avg_rate>
+    <annualized_pct>{funding.get('annualized_rate', 0):.2f}%</annualized_pct>
+    <sentiment>{funding.get('sentiment', 'NEUTRAL')}</sentiment>
+  </funding_analysis>
+  
+  <liquidation_analysis>
+    <total_liquidations>{liquidations.get('total_liquidations', 0)}</total_liquidations>
+    <long_liquidations>{liquidations.get('long_liquidations', 0)}</long_liquidations>
+    <short_liquidations>{liquidations.get('short_liquidations', 0)}</short_liquidations>
+    <total_value_usd>{liquidations.get('total_value_usd', 0):.2f}</total_value_usd>
+    <dominant_side>{liquidations.get('dominant_side', 'BALANCED')}</dominant_side>
+    <cascade_risk>{liquidations.get('cascade_risk', 'LOW')}</cascade_risk>
+  </liquidation_analysis>
+  
+  <regime_analysis>
+    <detected_regime>{regime.get('detected_regime', 'UNKNOWN')}</detected_regime>
+    <description>{regime.get('description', '')}</description>
+    <price_direction>{regime.get('price_direction', 'UNKNOWN')}</price_direction>
+    <flow_direction>{regime.get('flow_direction', 'NEUTRAL')}</flow_direction>
+    <volatility_state>{regime.get('volatility_state', 'NORMAL')}</volatility_state>
+  </regime_analysis>
+  
+  <signals>
+    <overall_bias>{signals.get('overall_bias', 'NEUTRAL')}</overall_bias>
+    <confidence>{signals.get('confidence', 50)}%</confidence>
+    <active_signals>{', '.join(signals.get('active_signals', []))}</active_signals>
+    <recommendation>{signals.get('recommendation', 'N/A')}</recommendation>
+  </signals>
+{errors_xml}
+</streaming_analysis>"""
+
+
+def _format_price_focus_xml(result: Dict) -> str:
+    """Format price-focused analysis."""
+    symbol = result.get("symbol", "UNKNOWN")
+    price = result.get("price_analysis", {})
+    regime = result.get("regime_analysis", {})
+    
+    exchange_xml = ""
+    for ex, stats in price.get("by_exchange", {}).items():
+        exchange_xml += f"""
+    <exchange name="{ex}">
+      <start>{stats.get('start_price', 0)}</start>
+      <end>{stats.get('end_price', 0)}</end>
+      <change_pct>{stats.get('change_pct', 0):.4f}%</change_pct>
+      <volatility>{stats.get('volatility', 0):.4f}</volatility>
+    </exchange>"""
+    
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<price_analysis symbol="{symbol}" duration="{result.get('duration_seconds', 0)}s">
+  <summary>
+    <start_price>{price.get('start_price', 0)}</start_price>
+    <end_price>{price.get('end_price', 0)}</end_price>
+    <high>{price.get('high', 0)}</high>
+    <low>{price.get('low', 0)}</low>
+    <change_pct>{price.get('change_pct', 0):.4f}%</change_pct>
+    <range_pct>{price.get('range_pct', 0):.4f}%</range_pct>
+    <direction>{price.get('direction', 'UNKNOWN')}</direction>
+    <volatility>{price.get('volatility', 0):.4f}</volatility>
+    <samples>{price.get('price_samples', 0)}</samples>
+  </summary>
+  <by_exchange>{exchange_xml}
+  </by_exchange>
+  <regime>{regime.get('detected_regime', 'UNKNOWN')}</regime>
+</price_analysis>"""
+
+
+def _format_flow_focus_xml(result: Dict) -> str:
+    """Format flow-focused analysis."""
+    symbol = result.get("symbol", "UNKNOWN")
+    flow = result.get("flow_analysis", {})
+    volume = result.get("volume_analysis", {})
+    signals = result.get("signals", {})
+    
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<flow_analysis symbol="{symbol}" duration="{result.get('duration_seconds', 0)}s">
+  <order_flow>
+    <delta>{flow.get('delta', 0):.4f}</delta>
+    <delta_pct>{flow.get('delta_pct', 0):.2f}%</delta_pct>
+    <cvd_final>{flow.get('cvd_final', 0):.4f}</cvd_final>
+    <cvd_trend>{flow.get('cvd_trend', 'FLAT')}</cvd_trend>
+    <aggressor>{flow.get('aggressor', 'BALANCED')}</aggressor>
+    <flow_signal>{flow.get('flow_signal', 'NEUTRAL')}</flow_signal>
+  </order_flow>
+  <volume>
+    <buy_volume>{volume.get('buy_volume', 0):.4f}</buy_volume>
+    <sell_volume>{volume.get('sell_volume', 0):.4f}</sell_volume>
+    <buy_sell_ratio>{volume.get('buy_sell_ratio', 0):.4f}</buy_sell_ratio>
+    <volume_imbalance>{volume.get('volume_imbalance', 0):.2f}%</volume_imbalance>
+    <large_trades>{volume.get('large_trade_count', 0)}</large_trades>
+  </volume>
+  <signal>
+    <bias>{signals.get('overall_bias', 'NEUTRAL')}</bias>
+    <confidence>{signals.get('confidence', 50)}%</confidence>
+    <recommendation>{signals.get('recommendation', 'N/A')}</recommendation>
+  </signal>
+</flow_analysis>"""
+
+
+def _format_regime_focus_xml(result: Dict) -> str:
+    """Format regime-focused analysis."""
+    symbol = result.get("symbol", "UNKNOWN")
+    regime = result.get("regime_analysis", {})
+    price = result.get("price_analysis", {})
+    flow = result.get("flow_analysis", {})
+    liquidations = result.get("liquidation_analysis", {})
+    signals = result.get("signals", {})
+    
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<regime_analysis symbol="{symbol}" duration="{result.get('duration_seconds', 0)}s">
+  <regime>
+    <detected>{regime.get('detected_regime', 'UNKNOWN')}</detected>
+    <description>{regime.get('description', '')}</description>
+    <volatility_state>{regime.get('volatility_state', 'NORMAL')}</volatility_state>
+  </regime>
+  <supporting_data>
+    <price_direction>{price.get('direction', 'UNKNOWN')}</price_direction>
+    <price_change>{price.get('change_pct', 0):.4f}%</price_change>
+    <flow_direction>{flow.get('flow_signal', 'NEUTRAL')}</flow_direction>
+    <delta_pct>{flow.get('delta_pct', 0):.2f}%</delta_pct>
+    <liquidations>{liquidations.get('total_liquidations', 0)}</liquidations>
+  </supporting_data>
+  <signal>
+    <bias>{signals.get('overall_bias', 'NEUTRAL')}</bias>
+    <confidence>{signals.get('confidence', 50)}%</confidence>
+    <recommendation>{signals.get('recommendation', 'N/A')}</recommendation>
+  </signal>
+</regime_analysis>"""
+
+
 def _format_intelligence_xml(result: dict, layers: str) -> str:
     """Format full intelligence result as XML."""
     import json
@@ -1449,6 +1863,11 @@ def main():
     logger.info("    • get_leverage_analysis        - Leverage & risk flow analysis")
     logger.info("    • get_cross_exchange_analysis  - Cross-exchange intelligence")
     logger.info("    • get_analytics_summary        - Available features & stats")
+    logger.info("")
+    logger.info("  STREAMING ANALYSIS TOOLS:")
+    logger.info("    • stream_and_analyze           - Stream for X seconds and analyze")
+    logger.info("    • quick_analyze                - Quick 10-second market snapshot")
+    logger.info("    • analyze_for_duration         - Analyze for X minutes with focus")
     logger.info("")
     logger.info("  SUPPORTED SYMBOLS: BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT")
     logger.info("=" * 70)
