@@ -1001,7 +1001,7 @@ class DirectExchangeClient:
                         open_price = float(data.get("open", 0) or 0)
                         high = float(data.get("high", 0) or 0)
                         low = float(data.get("low", 0) or 0)
-                        change_pct = float(data.get("change", 0) or 0) * 100  # Kraken provides 'change' field
+                        change_pct = float(data.get("change", 0) or 0)  # Kraken 'change' is already percentage
                         if vol > 0 or high > 0:
                             await self._update_ticker_24h(symbol, "kraken_futures", vol, 0, high, low, change_pct, 0)
                         
@@ -1184,7 +1184,7 @@ class DirectExchangeClient:
                                 
                                 # 24h stats
                                 vol = float(ticker.get("volume_24h", 0) or 0)
-                                vol_usd = float(ticker.get("volume_24h_usd", 0) or 0)
+                                vol_usd = float(ticker.get("volume_24h_quote", ticker.get("volume_24h_usd", 0)) or 0)
                                 high = float(ticker.get("high_24h", 0) or 0)
                                 low = float(ticker.get("low_24h", 0) or 0)
                                 change = float(ticker.get("change_percentage", 0) or 0)
@@ -1540,7 +1540,7 @@ class DirectExchangeClient:
                     logger.debug(f"Hyperliquid parse error: {e}")
     
     async def _connect_pyth(self):
-        """Connect to Pyth Network WebSocket for oracle prices."""
+        """Connect to Pyth Network WebSocket for oracle prices with auto-reconnect."""
         url = "wss://hermes.pyth.network/ws"
         
         # Pyth price feed IDs for major crypto (these are the official Pyth price IDs)
@@ -1555,45 +1555,63 @@ class DirectExchangeClient:
             "XRPUSDT": "ec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8"
         }
         
-        async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to price feeds
-            subscribe_msg = {
-                "type": "subscribe",
-                "ids": list(pyth_feeds.values())
-            }
-            await ws.send(json.dumps(subscribe_msg))
-            
-            self.connected_exchanges["pyth"] = True
-            logger.info("✓ Connected to Pyth Oracle")
-            
-            # Reverse mapping
-            reverse_feeds = {v: k for k, v in pyth_feeds.items()}
-            
-            async for message in ws:
-                if not self._running:
-                    break
-                try:
-                    data = json.loads(message)
+        reverse_feeds = {v: k for k, v in pyth_feeds.items()}
+        
+        while self._running:
+            try:
+                async with websockets.connect(
+                    url, 
+                    ping_interval=30,
+                    ping_timeout=20,
+                    close_timeout=10,
+                    max_size=10 * 1024 * 1024  # 10MB max message size
+                ) as ws:
+                    # Subscribe to price feeds
+                    subscribe_msg = {
+                        "type": "subscribe",
+                        "ids": list(pyth_feeds.values())
+                    }
+                    await ws.send(json.dumps(subscribe_msg))
                     
-                    if data.get("type") == "price_update":
-                        price_feed = data.get("price_feed", {})
-                        feed_id = price_feed.get("id", "")
-                        symbol = reverse_feeds.get(feed_id)
-                        
-                        if symbol:
-                            price_data = price_feed.get("price", {})
-                            price = float(price_data.get("price", 0) or 0)
-                            expo = int(price_data.get("expo", 0) or 0)
+                    self.connected_exchanges["pyth"] = True
+                    logger.info("✓ Connected to Pyth Oracle")
+                    
+                    async for message in ws:
+                        if not self._running:
+                            break
+                        try:
+                            data = json.loads(message)
                             
-                            if price > 0:
-                                # Pyth prices need to be adjusted by exponent
-                                actual_price = price * (10 ** expo)
-                                if actual_price > 0:
-                                    await self._update_price(symbol, "pyth", actual_price, actual_price, actual_price)
-                except json.JSONDecodeError:
-                    pass
-                except Exception as e:
-                    logger.debug(f"Pyth parse error: {e}")
+                            if data.get("type") == "price_update":
+                                price_feed = data.get("price_feed", {})
+                                feed_id = price_feed.get("id", "")
+                                symbol = reverse_feeds.get(feed_id)
+                                
+                                if symbol:
+                                    price_data = price_feed.get("price", {})
+                                    price = float(price_data.get("price", 0) or 0)
+                                    expo = int(price_data.get("expo", 0) or 0)
+                                    
+                                    if price > 0:
+                                        # Pyth prices need to be adjusted by exponent
+                                        actual_price = price * (10 ** expo)
+                                        if actual_price > 0:
+                                            await self._update_price(symbol, "pyth", actual_price, actual_price, actual_price)
+                        except json.JSONDecodeError:
+                            pass
+                        except Exception as e:
+                            logger.debug(f"Pyth parse error: {e}")
+            
+            except websockets.exceptions.ConnectionClosed as e:
+                if self._running:
+                    logger.warning(f"Pyth connection closed: {e}. Reconnecting in 5s...")
+                    self.connected_exchanges["pyth"] = False
+                    await asyncio.sleep(5)
+            except Exception as e:
+                if self._running:
+                    logger.error(f"Pyth connection error: {e}. Reconnecting in 5s...")
+                    self.connected_exchanges["pyth"] = False
+                    await asyncio.sleep(5)
     
     # ========================================================================
     # Price Management
@@ -1674,24 +1692,35 @@ class DirectExchangeClient:
     
     async def _update_mark_price(self, symbol: str, exchange: str, mark_price: float, 
                                  index_price: float, funding_rate: float, next_funding_time: int):
-        """Update mark price and funding rate."""
+        """Update mark price and funding rate. Merges data to preserve existing values."""
         timestamp = int(time.time() * 1000)
         
         async with self._lock:
+            # Get existing data to preserve non-zero values
+            existing_mark = self.mark_prices[symbol].get(exchange, {})
+            existing_funding = self.funding_rates[symbol].get(exchange, {})
+            
+            # Use new value if provided, otherwise keep existing
+            final_mark = mark_price if mark_price > 0 else existing_mark.get("mark_price", 0)
+            final_index = index_price if index_price > 0 else existing_mark.get("index_price", 0)
+            final_rate = funding_rate if funding_rate != 0 else existing_funding.get("funding_rate", 0)
+            final_next_time = next_funding_time if next_funding_time > 0 else existing_funding.get("next_funding_time", 0)
+            
             self.mark_prices[symbol][exchange] = {
-                "mark_price": mark_price,
-                "index_price": index_price,
-                "basis": mark_price - index_price if index_price > 0 else 0,
-                "basis_pct": ((mark_price - index_price) / index_price * 100) if index_price > 0 else 0,
+                "mark_price": final_mark,
+                "index_price": final_index,
+                "basis": final_mark - final_index if final_index > 0 else 0,
+                "basis_pct": ((final_mark - final_index) / final_index * 100) if final_index > 0 else 0,
                 "timestamp": timestamp,
                 "exchange": exchange
             }
             
             self.funding_rates[symbol][exchange] = {
-                "rate": funding_rate,
-                "rate_pct": funding_rate * 100,
-                "annualized_rate": funding_rate * 3 * 365 * 100,  # 8hr funding * 3 * 365
-                "next_funding_time": next_funding_time,
+                "funding_rate": final_rate,
+                "rate": final_rate,  # Keep for backward compatibility
+                "rate_pct": final_rate * 100,
+                "annualized_rate": final_rate * 3 * 365 * 100,  # 8hr funding * 3 * 365
+                "next_funding_time": final_next_time,
                 "timestamp": timestamp,
                 "exchange": exchange
             }
@@ -1723,12 +1752,12 @@ class DirectExchangeClient:
         
         async with self._lock:
             self.ticker_24h[symbol][exchange] = {
-                "volume": volume,
-                "quote_volume": quote_volume,
+                "volume_24h": volume,
+                "quote_volume_24h": quote_volume,
                 "high_24h": high,
                 "low_24h": low,
-                "price_change_pct": price_change_pct,
-                "trades_count": trades_count,
+                "price_change_percent_24h": price_change_pct,
+                "trades_count_24h": trades_count,
                 "timestamp": timestamp,
                 "exchange": exchange
             }
