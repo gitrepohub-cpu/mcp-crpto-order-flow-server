@@ -52,6 +52,244 @@ from src.tools.crypto_arbitrage_tool import (
     get_market_summary
 )
 
+# Import Binance Futures REST tools
+from src.tools.binance_futures_tools import (
+    # Market Data
+    binance_get_ticker,
+    binance_get_prices,
+    binance_get_orderbook,
+    binance_get_trades,
+    binance_get_klines,
+    # Derivatives Data
+    binance_get_open_interest,
+    binance_get_open_interest_history,
+    binance_get_funding_rate,
+    binance_get_premium_index,
+    # Positioning Data
+    binance_get_long_short_ratio,
+    binance_get_taker_volume,
+    # Basis Data
+    binance_get_basis,
+    # Liquidations
+    binance_get_liquidations,
+    # Comprehensive
+    binance_market_snapshot,
+    binance_full_analysis,
+)
+
+# Import Bybit REST tools
+from src.tools.bybit_tools import (
+    # Spot Market Tools
+    bybit_spot_ticker,
+    bybit_spot_orderbook,
+    bybit_spot_trades,
+    bybit_spot_klines,
+    bybit_all_spot_tickers,
+    # Futures/Linear Tools
+    bybit_futures_ticker,
+    bybit_futures_orderbook,
+    bybit_open_interest,
+    bybit_funding_rate,
+    bybit_long_short_ratio,
+    bybit_historical_volatility,
+    bybit_insurance_fund,
+    bybit_all_perpetual_tickers,
+    # Analysis Tools
+    bybit_derivatives_analysis,
+    bybit_market_snapshot,
+    bybit_instruments_info,
+    bybit_options_overview,
+    bybit_risk_limit,
+    bybit_announcements,
+    bybit_full_market_analysis,
+)
+
+# Import Binance Spot REST tools
+from src.tools.binance_spot_tools import (
+    # Market Data
+    binance_spot_ticker,
+    binance_spot_price,
+    binance_spot_orderbook,
+    binance_spot_trades,
+    binance_spot_klines,
+    binance_spot_avg_price,
+    binance_spot_book_ticker,
+    binance_spot_agg_trades,
+    binance_spot_exchange_info,
+    binance_spot_rolling_ticker,
+    binance_spot_all_tickers,
+    # Analysis
+    binance_spot_snapshot,
+    binance_spot_full_analysis,
+)
+
+# Import OKX REST tools
+from src.tools.okx_tools import (
+    # Ticker Tools
+    okx_ticker,
+    okx_all_tickers,
+    okx_index_ticker,
+    # Orderbook Tools
+    okx_orderbook,
+    # Trades Tools
+    okx_trades,
+    # Klines Tools
+    okx_klines,
+    # Funding Rate Tools
+    okx_funding_rate,
+    okx_funding_rate_history,
+    # Open Interest Tools
+    okx_open_interest,
+    okx_oi_volume,
+    # Long/Short & Taker Volume
+    okx_long_short_ratio,
+    okx_taker_volume,
+    # Instrument Info
+    okx_instruments,
+    okx_mark_price,
+    # Insurance & Platform
+    okx_insurance_fund,
+    okx_platform_volume,
+    # Options
+    okx_options_summary,
+    # Analysis
+    okx_market_snapshot,
+    okx_full_analysis,
+    okx_top_movers,
+)
+
+# Import Kraken REST tools
+from src.tools.kraken_tools import (
+    # Spot Tools
+    kraken_spot_ticker,
+    kraken_all_spot_tickers,
+    kraken_spot_orderbook,
+    kraken_spot_trades,
+    kraken_spot_klines,
+    kraken_spread,
+    kraken_assets,
+    kraken_spot_pairs,
+    # Futures Tools
+    kraken_futures_ticker,
+    kraken_all_futures_tickers,
+    kraken_futures_orderbook,
+    kraken_futures_trades,
+    kraken_futures_klines,
+    kraken_futures_instruments,
+    # Funding & OI
+    kraken_funding_rates,
+    kraken_open_interest,
+    # System
+    kraken_system_status,
+    # Analysis
+    kraken_top_movers,
+    kraken_market_snapshot,
+    kraken_full_analysis,
+)
+
+# Import Gate.io REST tools
+from src.tools.gateio_tools import (
+    # Perpetual Futures Tools
+    gateio_futures_contracts_tool,
+    gateio_futures_contract_tool,
+    gateio_futures_ticker_tool,
+    gateio_all_futures_tickers_tool,
+    gateio_futures_orderbook_tool,
+    gateio_futures_trades_tool,
+    gateio_futures_klines_tool,
+    gateio_funding_rate_tool,
+    gateio_all_funding_rates_tool,
+    gateio_contract_stats_tool,
+    gateio_open_interest_tool,
+    gateio_liquidations_tool,
+    gateio_insurance_fund_tool,
+    gateio_risk_limit_tiers_tool,
+    # Delivery Futures Tools
+    gateio_delivery_contracts_tool,
+    gateio_delivery_ticker_tool,
+    # Options Tools
+    gateio_options_underlyings_tool,
+    gateio_options_expirations_tool,
+    gateio_options_contracts_tool,
+    gateio_options_tickers_tool,
+    gateio_options_underlying_ticker_tool,
+    gateio_options_orderbook_tool,
+    # Analysis Tools
+    gateio_market_snapshot_tool,
+    gateio_top_movers_tool,
+    gateio_full_analysis_tool,
+    gateio_perpetuals_tool,
+)
+
+# Import Hyperliquid REST tools
+from src.tools.hyperliquid_tools import (
+    # Market Data Tools
+    hyperliquid_meta_tool,
+    hyperliquid_all_mids_tool,
+    hyperliquid_ticker_tool,
+    hyperliquid_all_tickers_tool,
+    hyperliquid_orderbook_tool,
+    hyperliquid_klines_tool,
+    # Funding & OI Tools
+    hyperliquid_funding_rate_tool,
+    hyperliquid_all_funding_rates_tool,
+    hyperliquid_open_interest_tool,
+    hyperliquid_top_movers_tool,
+    hyperliquid_exchange_stats_tool,
+    # Spot Tools
+    hyperliquid_spot_meta_tool,
+    hyperliquid_spot_meta_and_ctxs_tool,
+    # Analysis Tools
+    hyperliquid_market_snapshot_tool,
+    hyperliquid_full_analysis_tool,
+    hyperliquid_perpetuals_tool,
+    hyperliquid_recent_trades_tool,
+)
+
+# Import Deribit REST tools
+from src.tools.deribit_tools import (
+    # Instrument Tools
+    deribit_instruments_tool,
+    deribit_currencies_tool,
+    # Ticker Tools
+    deribit_ticker_tool,
+    deribit_perpetual_ticker_tool,
+    deribit_all_perpetual_tickers_tool,
+    deribit_futures_tickers_tool,
+    # Orderbook Tools
+    deribit_orderbook_tool,
+    # Trades Tools
+    deribit_trades_tool,
+    deribit_trades_by_currency_tool,
+    # Index & Price Tools
+    deribit_index_price_tool,
+    deribit_index_names_tool,
+    # Funding Rate Tools
+    deribit_funding_rate_tool,
+    deribit_funding_history_tool,
+    deribit_funding_analysis_tool,
+    # Volatility Tools
+    deribit_historical_volatility_tool,
+    deribit_dvol_tool,
+    # Klines Tools
+    deribit_klines_tool,
+    # Open Interest Tools
+    deribit_open_interest_tool,
+    # Options Tools
+    deribit_options_summary_tool,
+    deribit_options_chain_tool,
+    deribit_option_ticker_tool,
+    deribit_top_options_tool,
+    # Analysis Tools
+    deribit_market_snapshot_tool,
+    deribit_full_analysis_tool,
+    deribit_exchange_stats_tool,
+    # Book Summary Tools
+    deribit_book_summary_tool,
+    # Settlement Tools
+    deribit_settlements_tool,
+)
+
 # Initialize MCP server
 mcp = FastMCP("Crypto Arbitrage Analysis Server")
 
@@ -1825,6 +2063,3341 @@ def _format_intelligence_xml(result: dict, layers: str) -> str:
 
 
 # ============================================================================
+# BINANCE FUTURES REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def binance_ticker_tool(symbol: str = None) -> str:
+    """
+    Get Binance Futures 24h ticker statistics via REST API.
+    
+    Returns comprehensive 24h statistics including price, volume, and trade count
+    directly from Binance Futures REST API.
+    
+    Args:
+        symbol: Specific symbol (e.g., "BTCUSDT") or leave empty for all major pairs
+    
+    Returns:
+        JSON with 24h ticker data including price changes, volume, high/low
+    """
+    import json
+    try:
+        result = await binance_get_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_orderbook_tool(symbol: str = "BTCUSDT", depth: int = 100) -> str:
+    """
+    Get Binance Futures orderbook depth via REST API (up to 1000 levels).
+    
+    Retrieves full orderbook with bid/ask analysis including:
+    - All price levels with quantities
+    - Spread analysis
+    - Depth imbalance metrics
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT)
+        depth: Number of levels (5, 10, 20, 50, 100, 500, 1000)
+    
+    Returns:
+        JSON with orderbook data and liquidity metrics
+    """
+    import json
+    try:
+        result = await binance_get_orderbook(symbol, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_trades_tool(symbol: str = "BTCUSDT", limit: int = 500) -> str:
+    """
+    Get recent aggregated trades from Binance Futures via REST API.
+    
+    Retrieves recent trades with analysis including:
+    - Buy/sell volume breakdown
+    - VWAP calculation
+    - Large trade detection
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of trades (max 1000)
+    
+    Returns:
+        JSON with trade data and volume analysis
+    """
+    import json
+    try:
+        result = await binance_get_trades(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_klines_tool(symbol: str = "BTCUSDT", interval: str = "1m", 
+                              limit: int = 200) -> str:
+    """
+    Get OHLCV candlestick data from Binance Futures via REST API.
+    
+    Retrieves historical candles with technical analysis including:
+    - Full OHLCV data
+    - SMA calculations
+    - Volume analysis
+    - Trend detection
+    
+    Args:
+        symbol: Trading pair
+        interval: Kline interval (1m, 5m, 15m, 30m, 1h, 4h, 1d)
+        limit: Number of candles (max 1500)
+    
+    Returns:
+        JSON with candle data and technical summary
+    """
+    import json
+    try:
+        result = await binance_get_klines(symbol, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_open_interest_tool(symbol: str = None) -> str:
+    """
+    Get current open interest from Binance Futures via REST API.
+    
+    Open interest = total number of outstanding derivative contracts.
+    Rising OI + price up = bullish, Rising OI + price down = bearish.
+    
+    Args:
+        symbol: Specific symbol or leave empty for all major pairs
+    
+    Returns:
+        JSON with open interest data
+    """
+    import json
+    try:
+        result = await binance_get_open_interest(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_open_interest_history_tool(symbol: str = "BTCUSDT", 
+                                             period: str = "5m",
+                                             limit: int = 200) -> str:
+    """
+    Get historical open interest from Binance Futures via REST API.
+    
+    Shows how open interest has changed over time.
+    Useful for identifying accumulation/distribution phases.
+    
+    Args:
+        symbol: Trading pair
+        period: Time period (5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d)
+        limit: Number of data points (max 500)
+    
+    Returns:
+        JSON with historical OI and trend analysis
+    """
+    import json
+    try:
+        result = await binance_get_open_interest_history(symbol, period, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_funding_rate_tool(symbol: str = "BTCUSDT", limit: int = 100) -> str:
+    """
+    Get historical funding rates from Binance Futures via REST API.
+    
+    Funding rate is paid between longs and shorts every 8 hours.
+    - Positive = longs pay shorts (market is long-heavy)
+    - Negative = shorts pay longs (market is short-heavy)
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of funding periods (max 1000)
+    
+    Returns:
+        JSON with funding rate history and sentiment analysis
+    """
+    import json
+    try:
+        result = await binance_get_funding_rate(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_premium_index_tool(symbol: str = None) -> str:
+    """
+    Get premium index / mark price from Binance Futures via REST API.
+    
+    Includes:
+    - Mark price (used for liquidations)
+    - Index price (spot aggregate)
+    - Basis (futures - spot premium/discount)
+    - Current funding rate
+    
+    Args:
+        symbol: Specific symbol or leave empty for all
+    
+    Returns:
+        JSON with premium index and basis data
+    """
+    import json
+    try:
+        result = await binance_get_premium_index(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_long_short_ratio_tool(symbol: str = "BTCUSDT", 
+                                        period: str = "5m",
+                                        limit: int = 100) -> str:
+    """
+    Get comprehensive long/short ratio data from Binance Futures via REST API.
+    
+    Fetches multiple positioning metrics:
+    - Top trader account ratio (how many traders are long vs short)
+    - Top trader position ratio (position sizes)
+    - Global account ratio (all traders)
+    - Taker buy/sell ratio (aggressor flow)
+    
+    Args:
+        symbol: Trading pair
+        period: Time period (5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d)
+        limit: Number of data points (max 500)
+    
+    Returns:
+        JSON with comprehensive positioning data
+    """
+    import json
+    try:
+        result = await binance_get_long_short_ratio(symbol, period, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_taker_volume_tool(symbol: str = "BTCUSDT", 
+                                    period: str = "5m",
+                                    limit: int = 100) -> str:
+    """
+    Get taker buy/sell volume ratio from Binance Futures via REST API.
+    
+    Taker volume shows who is crossing the spread (aggressors):
+    - Ratio > 1 = more aggressive buying
+    - Ratio < 1 = more aggressive selling
+    
+    Critical for detecting momentum and order flow.
+    
+    Args:
+        symbol: Trading pair
+        period: Time period
+        limit: Number of data points
+    
+    Returns:
+        JSON with taker volume analysis
+    """
+    import json
+    try:
+        result = await binance_get_taker_volume(symbol, period, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_basis_tool(symbol: str = "BTCUSDT", 
+                             period: str = "5m",
+                             limit: int = 200) -> str:
+    """
+    Get futures basis data from Binance via REST API.
+    
+    Basis = Futures Price - Index/Spot Price
+    - Positive = Contango (futures premium)
+    - Negative = Backwardation (futures discount)
+    
+    Annualized basis is used for carry trade calculations.
+    
+    Args:
+        symbol: Trading pair
+        period: Time period
+        limit: Number of data points
+    
+    Returns:
+        JSON with basis analysis
+    """
+    import json
+    try:
+        result = await binance_get_basis(symbol, period, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_liquidations_tool(symbol: str = None, limit: int = 100) -> str:
+    """
+    Get recent liquidation orders from Binance Futures via REST API.
+    
+    Liquidations occur when traders get margin called:
+    - SELL liquidations = longs getting liquidated
+    - BUY liquidations = shorts getting liquidated
+    
+    Large liquidation clusters can indicate support/resistance levels.
+    
+    Args:
+        symbol: Specific symbol or leave empty for all
+        limit: Number of liquidations (max 1000)
+    
+    Returns:
+        JSON with liquidation data and analysis
+    """
+    import json
+    try:
+        result = await binance_get_liquidations(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_snapshot_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get a comprehensive market snapshot from Binance Futures via REST API.
+    
+    Single call that fetches:
+    - Current prices (mark, index, last)
+    - 24h statistics
+    - Open interest
+    - Funding rate
+    - Best bid/ask spread
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with complete market snapshot
+    """
+    import json
+    try:
+        result = await binance_market_snapshot(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_full_analysis_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get complete market analysis from Binance Futures via REST API.
+    
+    Comprehensive analysis including:
+    - Market snapshot (prices, volume, OI)
+    - Positioning data (long/short ratios)
+    - Historical analysis (OI trend, funding trend, basis)
+    - Trading signals based on the data
+    
+    This is the most comprehensive single-call analysis available.
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with full analysis and trading signals
+    """
+    import json
+    try:
+        result = await binance_full_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# BYBIT REST API MCP TOOLS - SPOT MARKET
+# ============================================================================
+
+@mcp.tool()
+async def bybit_spot_ticker_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get Bybit spot market ticker data.
+    
+    Returns current price, 24h change, volume, and spread info for spot trading.
+    
+    Args:
+        symbol: Trading pair (e.g., BTCUSDT, ETHUSDT)
+    
+    Returns:
+        JSON with spot ticker data including price, volume, 24h stats
+    """
+    import json
+    try:
+        result = await bybit_spot_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_spot_orderbook_tool(symbol: str = "BTCUSDT", depth: int = 50) -> str:
+    """
+    Get Bybit spot orderbook depth.
+    
+    Returns bid/ask levels with liquidity analysis for spot market.
+    
+    Args:
+        symbol: Trading pair
+        depth: Number of levels (1-200)
+    
+    Returns:
+        JSON with orderbook data, spread, and imbalance metrics
+    """
+    import json
+    try:
+        result = await bybit_spot_orderbook(symbol, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_spot_trades_tool(symbol: str = "BTCUSDT", limit: int = 100) -> str:
+    """
+    Get recent Bybit spot trades.
+    
+    Analyzes recent trade flow to determine buying/selling pressure.
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of trades (max 1000)
+    
+    Returns:
+        JSON with trades analysis including buy/sell ratio and large trade detection
+    """
+    import json
+    try:
+        result = await bybit_spot_trades(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_spot_klines_tool(symbol: str = "BTCUSDT", 
+                                  interval: str = "60", 
+                                  limit: int = 100) -> str:
+    """
+    Get Bybit spot klines/candlesticks.
+    
+    OHLCV data with trend analysis for spot market.
+    
+    Args:
+        symbol: Trading pair
+        interval: Kline interval (1,3,5,15,30,60,120,240,360,720,D,W,M)
+        limit: Number of klines (max 1000)
+    
+    Returns:
+        JSON with OHLCV data and trend analysis
+    """
+    import json
+    try:
+        result = await bybit_spot_klines(symbol, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_all_spot_tickers_tool() -> str:
+    """
+    Get all Bybit spot market tickers.
+    
+    Returns summary of all spot pairs including top gainers, losers, and volume leaders.
+    
+    Returns:
+        JSON with all spot tickers and market summary
+    """
+    import json
+    try:
+        result = await bybit_all_spot_tickers()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# BYBIT REST API MCP TOOLS - FUTURES/LINEAR PERPETUAL
+# ============================================================================
+
+@mcp.tool()
+async def bybit_futures_ticker_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get Bybit USDT perpetual futures ticker.
+    
+    Comprehensive futures data including:
+    - Price, mark price, index price
+    - Funding rate and next funding time
+    - Open interest and value
+    - Basis/premium calculation
+    
+    Args:
+        symbol: Trading pair (e.g., BTCUSDT)
+    
+    Returns:
+        JSON with futures ticker and derivatives metrics
+    """
+    import json
+    try:
+        result = await bybit_futures_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_futures_orderbook_tool(symbol: str = "BTCUSDT", depth: int = 100) -> str:
+    """
+    Get Bybit futures orderbook depth (up to 500 levels).
+    
+    Includes bid/ask imbalance, spread analysis, and wall detection.
+    
+    Args:
+        symbol: Trading pair
+        depth: Number of levels (1-500)
+    
+    Returns:
+        JSON with orderbook data and liquidity analysis
+    """
+    import json
+    try:
+        result = await bybit_futures_orderbook(symbol, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_open_interest_tool(symbol: str = "BTCUSDT", 
+                                    interval: str = "1h", 
+                                    limit: int = 48) -> str:
+    """
+    Get Bybit open interest history.
+    
+    OI analysis for understanding position building/unwinding:
+    - Rising OI + Rising Price = New longs entering (bullish)
+    - Rising OI + Falling Price = New shorts entering (bearish)
+    - Falling OI = Positions closing
+    
+    Args:
+        symbol: Trading pair
+        interval: Data interval (5min, 15min, 30min, 1h, 4h, 1d)
+        limit: Number of data points (max 200)
+    
+    Returns:
+        JSON with OI history and trend analysis
+    """
+    import json
+    try:
+        result = await bybit_open_interest(symbol, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_funding_rate_tool(symbol: str = "BTCUSDT", limit: int = 50) -> str:
+    """
+    Get Bybit funding rate history.
+    
+    Funding rate indicates market sentiment:
+    - Positive = Longs pay shorts (bullish positioning)
+    - Negative = Shorts pay longs (bearish positioning)
+    - Extreme funding often precedes reversals
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of funding periods (max 200)
+    
+    Returns:
+        JSON with funding rate history, annualized rate, and sentiment
+    """
+    import json
+    try:
+        result = await bybit_funding_rate(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_long_short_ratio_tool(symbol: str = "BTCUSDT", 
+                                       period: str = "1h", 
+                                       limit: int = 24) -> str:
+    """
+    Get Bybit long/short account ratio.
+    
+    Shows the distribution of longs vs shorts:
+    - Ratio > 1.5 = Heavy long positioning (contrarian short signal?)
+    - Ratio < 0.67 = Heavy short positioning (contrarian long signal?)
+    
+    Args:
+        symbol: Trading pair
+        period: Data interval (5min, 15min, 30min, 1h, 4h, 1d)
+        limit: Number of data points (max 500)
+    
+    Returns:
+        JSON with L/S ratio history and positioning sentiment
+    """
+    import json
+    try:
+        result = await bybit_long_short_ratio(symbol, period, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_historical_volatility_tool(base_coin: str = "BTC", period: int = 30) -> str:
+    """
+    Get Bybit historical volatility (options market data).
+    
+    Historical volatility for volatility regime analysis:
+    - High HV = Volatile market, use wider stops
+    - Low HV = Compression, breakout expected
+    
+    Args:
+        base_coin: Base coin (BTC, ETH)
+        period: Period in days (7, 14, 21, 30, 60, 90, 180, 270)
+    
+    Returns:
+        JSON with historical volatility and regime classification
+    """
+    import json
+    try:
+        result = await bybit_historical_volatility(base_coin, period)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_insurance_fund_tool(coin: str = "USDT") -> str:
+    """
+    Get Bybit insurance fund balance.
+    
+    Insurance fund protects traders from auto-deleveraging (ADL).
+    Healthy fund = lower ADL risk.
+    
+    Args:
+        coin: Coin to check (USDT, BTC, etc.)
+    
+    Returns:
+        JSON with insurance fund data and health status
+    """
+    import json
+    try:
+        result = await bybit_insurance_fund(coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_all_perpetual_tickers_tool() -> str:
+    """
+    Get all Bybit USDT perpetual tickers.
+    
+    Returns market overview with:
+    - Top gainers and losers
+    - Highest open interest
+    - Highest volume
+    - Highest/most extreme funding rates
+    
+    Returns:
+        JSON with all perpetual tickers and market summary
+    """
+    import json
+    try:
+        result = await bybit_all_perpetual_tickers()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# BYBIT REST API MCP TOOLS - ANALYSIS & OPTIONS
+# ============================================================================
+
+@mcp.tool()
+async def bybit_derivatives_analysis_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive Bybit derivatives analysis.
+    
+    Combines multiple data sources:
+    - OI trend and position flow
+    - Funding rate sentiment
+    - Long/short positioning
+    - Price and volume metrics
+    - Generated trading signals
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with full derivatives analysis and signals
+    """
+    import json
+    try:
+        result = await bybit_derivatives_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_market_snapshot_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive Bybit market snapshot.
+    
+    Single call for complete market view:
+    - Ticker data
+    - Orderbook (top levels)
+    - Recent trades
+    - Open interest
+    - Funding history
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with complete market snapshot
+    """
+    import json
+    try:
+        result = await bybit_market_snapshot(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_instruments_info_tool(category: str = "linear", 
+                                       symbol: str = None) -> str:
+    """
+    Get Bybit instrument specifications.
+    
+    Returns contract specifications including:
+    - Lot size, tick size, min notional
+    - Leverage limits
+    - Funding interval
+    - Contract type
+    
+    Args:
+        category: Market category (spot, linear, inverse, option)
+        symbol: Specific symbol (optional, returns all if empty)
+    
+    Returns:
+        JSON with instrument specifications
+    """
+    import json
+    try:
+        result = await bybit_instruments_info(category, symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_options_overview_tool(base_coin: str = "BTC") -> str:
+    """
+    Get Bybit options market overview.
+    
+    Options market data including:
+    - Options tickers
+    - Historical volatility
+    - Delivery prices
+    
+    Args:
+        base_coin: Base coin (BTC, ETH)
+    
+    Returns:
+        JSON with options market overview
+    """
+    import json
+    try:
+        result = await bybit_options_overview(base_coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_risk_limit_tool(category: str = "linear", symbol: str = None) -> str:
+    """
+    Get Bybit risk limit tiers.
+    
+    Risk limits define max position size at each leverage level:
+    - Higher tiers = larger positions but lower max leverage
+    - Important for position sizing
+    
+    Args:
+        category: Market category (linear, inverse)
+        symbol: Specific symbol (optional)
+    
+    Returns:
+        JSON with risk limit tiers
+    """
+    import json
+    try:
+        result = await bybit_risk_limit(category, symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_announcements_tool(locale: str = "en-US", limit: int = 10) -> str:
+    """
+    Get Bybit platform announcements.
+    
+    Stay informed about:
+    - New listings
+    - Maintenance schedules
+    - Product updates
+    - Promotions
+    
+    Args:
+        locale: Language (en-US, zh-CN, etc.)
+        limit: Number of announcements
+    
+    Returns:
+        JSON with recent announcements
+    """
+    import json
+    try:
+        result = await bybit_announcements(locale, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def bybit_full_market_analysis_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive Bybit full market analysis.
+    
+    The most comprehensive single-call analysis for Bybit:
+    - Spot data
+    - Futures data with funding/OI
+    - Positioning data (long/short ratio)
+    - Combined signals and analysis
+    - Trading recommendations
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with full market analysis and trading signals
+    """
+    import json
+    try:
+        result = await bybit_full_market_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# BINANCE SPOT REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def binance_spot_ticker_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get Binance spot 24hr ticker statistics.
+    
+    Provides comprehensive 24-hour statistics including:
+    - Current price and 24h change
+    - High, low, and weighted average price
+    - Volume and trade count
+    - Bid/ask prices and spread
+    
+    Args:
+        symbol: Trading pair (e.g., BTCUSDT, ETHUSDT)
+    
+    Returns:
+        JSON with complete 24h ticker statistics
+    """
+    import json
+    try:
+        result = await binance_spot_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_price_tool(symbol: str = None) -> str:
+    """
+    Get current Binance spot price(s).
+    
+    Returns instant price quotes for spot markets.
+    If no symbol provided, returns major pairs.
+    
+    Args:
+        symbol: Trading pair or None for major pairs (BTC, ETH, SOL, XRP, BNB)
+    
+    Returns:
+        JSON with current price data
+    """
+    import json
+    try:
+        result = await binance_spot_price(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_orderbook_tool(symbol: str = "BTCUSDT", depth: int = 100) -> str:
+    """
+    Get Binance spot orderbook depth.
+    
+    Returns bid/ask levels with:
+    - Best bid/ask and spread analysis
+    - Volume imbalance calculation
+    - Major bid/ask walls detection
+    
+    Args:
+        symbol: Trading pair
+        depth: Number of levels (5, 10, 20, 50, 100, 500, 1000, 5000)
+    
+    Returns:
+        JSON with orderbook and liquidity analysis
+    """
+    import json
+    try:
+        result = await binance_spot_orderbook(symbol, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_trades_tool(symbol: str = "BTCUSDT", limit: int = 500) -> str:
+    """
+    Get recent Binance spot trades with flow analysis.
+    
+    Returns recent trade data with:
+    - Buy/sell volume breakdown
+    - Large trade detection
+    - Trade flow direction signal
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of trades (max 1000)
+    
+    Returns:
+        JSON with trades and flow analysis
+    """
+    import json
+    try:
+        result = await binance_spot_trades(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_klines_tool(
+    symbol: str = "BTCUSDT",
+    interval: str = "1h",
+    limit: int = 100
+) -> str:
+    """
+    Get Binance spot klines/candlestick data.
+    
+    Returns OHLCV data with analysis:
+    - Price trend detection
+    - Volume trend analysis
+    - Period high/low range
+    
+    Args:
+        symbol: Trading pair
+        interval: Timeframe (1s,1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M)
+        limit: Number of candles (max 1000)
+    
+    Returns:
+        JSON with OHLCV data and trend analysis
+    """
+    import json
+    try:
+        result = await binance_spot_klines(symbol, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_avg_price_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get Binance spot average price (5-minute window).
+    
+    Returns the current average price based on the
+    last 5 minutes of trading activity.
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with average price
+    """
+    import json
+    try:
+        result = await binance_spot_avg_price(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_book_ticker_tool(symbol: str = None) -> str:
+    """
+    Get Binance spot best bid/ask prices.
+    
+    Returns the best bid and ask prices with quantities.
+    Useful for spread analysis and execution planning.
+    
+    Args:
+        symbol: Trading pair or None for all
+    
+    Returns:
+        JSON with best bid/ask data
+    """
+    import json
+    try:
+        result = await binance_spot_book_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_agg_trades_tool(symbol: str = "BTCUSDT", limit: int = 500) -> str:
+    """
+    Get Binance spot aggregate trades.
+    
+    Returns compressed/aggregated trade data:
+    - Trades that execute at same price/time are combined
+    - More efficient for volume analysis
+    
+    Args:
+        symbol: Trading pair
+        limit: Number of trades (max 1000)
+    
+    Returns:
+        JSON with aggregate trades and analysis
+    """
+    import json
+    try:
+        result = await binance_spot_agg_trades(symbol, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_exchange_info_tool(symbol: str = None) -> str:
+    """
+    Get Binance spot exchange information.
+    
+    Returns exchange rules and symbol specifications:
+    - Trading rules (min/max qty, tick size)
+    - Symbol status and filters
+    - Available order types
+    
+    Args:
+        symbol: Specific symbol or None for exchange summary
+    
+    Returns:
+        JSON with exchange/symbol information
+    """
+    import json
+    try:
+        result = await binance_spot_exchange_info(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_rolling_ticker_tool(symbol: str = "BTCUSDT", window: str = "1d") -> str:
+    """
+    Get Binance spot rolling window ticker.
+    
+    Returns price change statistics for a custom window:
+    - Flexible window sizes (1m-59m, 1h-23h, 1d-7d)
+    - Volume and trade count for window
+    
+    Args:
+        symbol: Trading pair
+        window: Window size (e.g., "1h", "4h", "1d", "7d")
+    
+    Returns:
+        JSON with rolling window statistics
+    """
+    import json
+    try:
+        result = await binance_spot_rolling_ticker(symbol, window)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_all_tickers_tool() -> str:
+    """
+    Get all Binance spot tickers with top movers.
+    
+    Returns market overview including:
+    - Top gainers and losers
+    - Highest volume pairs
+    - Market summary statistics
+    
+    Returns:
+        JSON with all tickers and top movers
+    """
+    import json
+    try:
+        result = await binance_spot_all_tickers()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_snapshot_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get comprehensive Binance spot market snapshot.
+    
+    Combines multiple data sources:
+    - Current ticker and price data
+    - Orderbook snapshot
+    - Recent trades summary
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with complete market snapshot
+    """
+    import json
+    try:
+        result = await binance_spot_snapshot(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def binance_spot_full_analysis_tool(symbol: str = "BTCUSDT") -> str:
+    """
+    Get complete Binance spot market analysis.
+    
+    The most comprehensive single-call analysis for Binance spot:
+    - Ticker, orderbook, and trade data
+    - Buy/sell flow analysis
+    - Orderbook imbalance signals
+    - Technical indicators and trends
+    - Trading recommendations
+    
+    Args:
+        symbol: Trading pair
+    
+    Returns:
+        JSON with full market analysis and signals
+    """
+    import json
+    try:
+        result = await binance_spot_full_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# OKX REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def okx_ticker_tool(inst_id: str = "BTC-USDT-SWAP") -> str:
+    """
+    Get OKX ticker data for a specific instrument.
+    
+    Supports all OKX instrument types:
+    - Perpetuals: BTC-USDT-SWAP, ETH-USDT-SWAP
+    - Spot: BTC-USDT, ETH-USDT
+    - Futures: BTC-USDT-240329 (expiry date)
+    
+    Args:
+        inst_id: Instrument ID (e.g., BTC-USDT-SWAP)
+    
+    Returns:
+        JSON with price, volume, and 24h stats
+    """
+    import json
+    try:
+        result = await okx_ticker(inst_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_all_tickers_tool(inst_type: str = "SWAP") -> str:
+    """
+    Get all OKX tickers for an instrument type.
+    
+    Args:
+        inst_type: SPOT, SWAP, FUTURES, OPTION, MARGIN
+    
+    Returns:
+        JSON with all tickers and top volume pairs
+    """
+    import json
+    try:
+        result = await okx_all_tickers(inst_type)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_index_ticker_tool(inst_id: str = "BTC-USD") -> str:
+    """
+    Get OKX index ticker.
+    
+    Args:
+        inst_id: Index instrument ID (e.g., BTC-USD, ETH-USD)
+    
+    Returns:
+        JSON with index price data
+    """
+    import json
+    try:
+        result = await okx_index_ticker(inst_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_orderbook_tool(inst_id: str = "BTC-USDT-SWAP", depth: int = 100) -> str:
+    """
+    Get OKX orderbook depth.
+    
+    Returns bid/ask levels with:
+    - Best bid/ask and spread analysis
+    - Volume imbalance calculation
+    - Major bid/ask walls detection
+    
+    Args:
+        inst_id: Instrument ID
+        depth: Number of levels (max 400)
+    
+    Returns:
+        JSON with orderbook and liquidity analysis
+    """
+    import json
+    try:
+        result = await okx_orderbook(inst_id, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_trades_tool(inst_id: str = "BTC-USDT-SWAP", limit: int = 100) -> str:
+    """
+    Get recent OKX trades with flow analysis.
+    
+    Args:
+        inst_id: Instrument ID
+        limit: Number of trades (max 500)
+    
+    Returns:
+        JSON with trades and buy/sell flow analysis
+    """
+    import json
+    try:
+        result = await okx_trades(inst_id, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_klines_tool(
+    inst_id: str = "BTC-USDT-SWAP",
+    interval: str = "1H",
+    limit: int = 100
+) -> str:
+    """
+    Get OKX klines/candlesticks.
+    
+    Args:
+        inst_id: Instrument ID
+        interval: 1m,3m,5m,15m,30m,1H,2H,4H,6H,12H,1D,1W,1M
+        limit: Number of candles (max 300)
+    
+    Returns:
+        JSON with OHLCV data and trend analysis
+    """
+    import json
+    try:
+        result = await okx_klines(inst_id, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_funding_rate_tool(inst_id: str = "BTC-USDT-SWAP") -> str:
+    """
+    Get current OKX funding rate.
+    
+    Args:
+        inst_id: Perpetual swap instrument ID
+    
+    Returns:
+        JSON with funding rate and sentiment analysis
+    """
+    import json
+    try:
+        result = await okx_funding_rate(inst_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_funding_rate_history_tool(
+    inst_id: str = "BTC-USDT-SWAP",
+    limit: int = 50
+) -> str:
+    """
+    Get OKX funding rate history.
+    
+    Args:
+        inst_id: Perpetual swap instrument ID
+        limit: Number of records (max 100)
+    
+    Returns:
+        JSON with historical funding rates and trend
+    """
+    import json
+    try:
+        result = await okx_funding_rate_history(inst_id, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_open_interest_tool(
+    inst_id: str = None,
+    inst_type: str = "SWAP",
+    uly: str = None
+) -> str:
+    """
+    Get OKX open interest.
+    
+    Args:
+        inst_id: Specific instrument or None for all
+        inst_type: SWAP, FUTURES, OPTION
+        uly: Underlying (e.g., BTC-USDT)
+    
+    Returns:
+        JSON with open interest data
+    """
+    import json
+    try:
+        result = await okx_open_interest(inst_id, inst_type, uly)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_oi_volume_tool(ccy: str = "BTC", period: str = "1H") -> str:
+    """
+    Get OKX open interest and volume history.
+    
+    Args:
+        ccy: Currency (BTC, ETH, etc.)
+        period: 5m, 1H, 1D
+    
+    Returns:
+        JSON with OI and volume history
+    """
+    import json
+    try:
+        result = await okx_oi_volume(ccy, period)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_long_short_ratio_tool(ccy: str = "BTC", period: str = "1H") -> str:
+    """
+    Get OKX long/short account ratio.
+    
+    Shows the ratio of accounts holding net long vs net short positions.
+    
+    Args:
+        ccy: Currency (BTC, ETH, etc.)
+        period: 5m, 1H, 1D
+    
+    Returns:
+        JSON with long/short ratio and interpretation
+    """
+    import json
+    try:
+        result = await okx_long_short_ratio(ccy, period)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_taker_volume_tool(
+    ccy: str = "BTC",
+    inst_type: str = "SWAP",
+    period: str = "1H"
+) -> str:
+    """
+    Get OKX taker buy/sell volume.
+    
+    Shows aggressive buying vs selling pressure.
+    
+    Args:
+        ccy: Currency (BTC, ETH, etc.)
+        inst_type: SPOT, SWAP, FUTURES, OPTION
+        period: 5m, 1H, 1D
+    
+    Returns:
+        JSON with taker volume breakdown and signal
+    """
+    import json
+    try:
+        result = await okx_taker_volume(ccy, inst_type, period)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_instruments_tool(inst_type: str = "SWAP", inst_id: str = None) -> str:
+    """
+    Get OKX instrument information.
+    
+    Args:
+        inst_type: SPOT, SWAP, FUTURES, OPTION, MARGIN
+        inst_id: Specific instrument ID for details
+    
+    Returns:
+        JSON with instrument specifications
+    """
+    import json
+    try:
+        result = await okx_instruments(inst_type, inst_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_mark_price_tool(inst_type: str = "SWAP", inst_id: str = None) -> str:
+    """
+    Get OKX mark price.
+    
+    Args:
+        inst_type: SWAP, FUTURES, OPTION, MARGIN
+        inst_id: Specific instrument ID
+    
+    Returns:
+        JSON with mark price data
+    """
+    import json
+    try:
+        result = await okx_mark_price(inst_type, inst_id)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_insurance_fund_tool(inst_type: str = "SWAP") -> str:
+    """
+    Get OKX insurance fund balance.
+    
+    Args:
+        inst_type: SWAP, FUTURES, OPTION
+    
+    Returns:
+        JSON with insurance fund data
+    """
+    import json
+    try:
+        result = await okx_insurance_fund(inst_type)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_platform_volume_tool() -> str:
+    """
+    Get OKX 24h platform trading volume.
+    
+    Returns platform-wide trading volume in USD and CNY.
+    
+    Returns:
+        JSON with platform volume statistics
+    """
+    import json
+    try:
+        result = await okx_platform_volume()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_options_summary_tool(uly: str = "BTC-USD") -> str:
+    """
+    Get OKX options market summary.
+    
+    Args:
+        uly: Underlying (e.g., BTC-USD, ETH-USD)
+    
+    Returns:
+        JSON with options OI, volume, and put/call ratio
+    """
+    import json
+    try:
+        result = await okx_options_summary(uly)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_market_snapshot_tool(symbol: str = "BTC") -> str:
+    """
+    Get comprehensive OKX market snapshot.
+    
+    Combines perpetual, spot, orderbook, funding, and OI data.
+    
+    Args:
+        symbol: Base symbol (BTC, ETH, etc.)
+    
+    Returns:
+        JSON with complete market snapshot
+    """
+    import json
+    try:
+        result = await okx_market_snapshot(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_full_analysis_tool(symbol: str = "BTC") -> str:
+    """
+    Get complete OKX market analysis with trading signals.
+    
+    The most comprehensive single-call analysis for OKX:
+    - Perpetual and spot data
+    - Orderbook and trade flow analysis
+    - Long/short ratio and taker volume
+    - Combined signals and recommendations
+    
+    Args:
+        symbol: Base symbol (BTC, ETH, etc.)
+    
+    Returns:
+        JSON with full analysis and trading signals
+    """
+    import json
+    try:
+        result = await okx_full_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def okx_top_movers_tool(inst_type: str = "SWAP", limit: int = 10) -> str:
+    """
+    Get OKX top gainers and losers.
+    
+    Args:
+        inst_type: SWAP, SPOT, FUTURES
+        limit: Number of results per category
+    
+    Returns:
+        JSON with top gainers, losers, and volume leaders
+    """
+    import json
+    try:
+        result = await okx_top_movers(inst_type, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# KRAKEN REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def kraken_spot_ticker_tool(pair: str = "XBTUSD") -> str:
+    """
+    Get Kraken spot ticker data.
+    
+    Args:
+        pair: Trading pair (XBTUSD, ETHUSD, SOLUSD, etc.)
+    
+    Returns:
+        JSON with ticker data and price analysis
+    """
+    import json
+    try:
+        result = await kraken_spot_ticker(pair)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_all_spot_tickers_tool(pairs: str = "XBTUSD,ETHUSD,SOLUSD") -> str:
+    """
+    Get multiple Kraken spot tickers.
+    
+    Args:
+        pairs: Comma-separated trading pairs
+    
+    Returns:
+        JSON with multiple tickers sorted by volume
+    """
+    import json
+    try:
+        pair_list = [p.strip() for p in pairs.split(",")]
+        result = await kraken_all_spot_tickers(pair_list)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_spot_orderbook_tool(pair: str = "XBTUSD", depth: int = 100) -> str:
+    """
+    Get Kraken spot order book.
+    
+    Args:
+        pair: Trading pair
+        depth: Number of levels (max 500)
+    
+    Returns:
+        JSON with orderbook and liquidity analysis
+    """
+    import json
+    try:
+        result = await kraken_spot_orderbook(pair, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_spot_trades_tool(pair: str = "XBTUSD", count: int = 100) -> str:
+    """
+    Get Kraken spot recent trades.
+    
+    Args:
+        pair: Trading pair
+        count: Number of trades
+    
+    Returns:
+        JSON with trades and buy/sell flow analysis
+    """
+    import json
+    try:
+        result = await kraken_spot_trades(pair, count)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_spot_klines_tool(pair: str = "XBTUSD", interval: str = "1H") -> str:
+    """
+    Get Kraken spot OHLC candlestick data.
+    
+    Args:
+        pair: Trading pair
+        interval: 1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W
+    
+    Returns:
+        JSON with candlesticks and technical analysis
+    """
+    import json
+    try:
+        result = await kraken_spot_klines(pair, interval)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_spread_tool(pair: str = "XBTUSD") -> str:
+    """
+    Get Kraken recent spread data.
+    
+    Args:
+        pair: Trading pair
+    
+    Returns:
+        JSON with spread history and liquidity analysis
+    """
+    import json
+    try:
+        result = await kraken_spread(pair)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_assets_tool() -> str:
+    """
+    Get Kraken supported assets.
+    
+    Returns:
+        JSON with all supported crypto assets
+    """
+    import json
+    try:
+        result = await kraken_assets()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_spot_pairs_tool(info: str = "info") -> str:
+    """
+    Get Kraken spot trading pairs.
+    
+    Args:
+        info: info, leverage, fees, margin
+    
+    Returns:
+        JSON with trading pair specifications
+    """
+    import json
+    try:
+        result = await kraken_spot_pairs(info)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_futures_ticker_tool(symbol: str = "PF_XBTUSD") -> str:
+    """
+    Get Kraken futures/perpetual ticker.
+    
+    Args:
+        symbol: Futures symbol (PF_XBTUSD = perpetual BTC)
+    
+    Returns:
+        JSON with futures ticker and funding analysis
+    """
+    import json
+    try:
+        result = await kraken_futures_ticker(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_all_futures_tickers_tool() -> str:
+    """
+    Get all Kraken futures/perpetual tickers.
+    
+    Returns:
+        JSON with all perpetuals and market aggregates
+    """
+    import json
+    try:
+        result = await kraken_all_futures_tickers()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_futures_orderbook_tool(symbol: str = "PF_XBTUSD") -> str:
+    """
+    Get Kraken futures order book.
+    
+    Args:
+        symbol: Futures symbol
+    
+    Returns:
+        JSON with orderbook and analysis
+    """
+    import json
+    try:
+        result = await kraken_futures_orderbook(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_futures_trades_tool(symbol: str = "PF_XBTUSD") -> str:
+    """
+    Get Kraken futures recent trades.
+    
+    Args:
+        symbol: Futures symbol
+    
+    Returns:
+        JSON with trades and flow analysis
+    """
+    import json
+    try:
+        result = await kraken_futures_trades(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_futures_klines_tool(symbol: str = "PF_XBTUSD", interval: str = "1h") -> str:
+    """
+    Get Kraken futures candlestick data.
+    
+    Args:
+        symbol: Futures symbol
+        interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w
+    
+    Returns:
+        JSON with candlesticks and analysis
+    """
+    import json
+    try:
+        result = await kraken_futures_klines(symbol, interval)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_futures_instruments_tool() -> str:
+    """
+    Get Kraken futures instrument specifications.
+    
+    Returns:
+        JSON with all futures instruments and their specs
+    """
+    import json
+    try:
+        result = await kraken_futures_instruments()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_funding_rates_tool() -> str:
+    """
+    Get Kraken perpetual funding rates.
+    
+    Returns:
+        JSON with funding rates for all perpetuals
+    """
+    import json
+    try:
+        result = await kraken_funding_rates()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_open_interest_tool() -> str:
+    """
+    Get Kraken perpetual open interest.
+    
+    Returns:
+        JSON with open interest for all perpetuals
+    """
+    import json
+    try:
+        result = await kraken_open_interest()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_system_status_tool() -> str:
+    """
+    Get Kraken system status.
+    
+    Returns:
+        JSON with system status and server time
+    """
+    import json
+    try:
+        result = await kraken_system_status()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_top_movers_tool(limit: int = 10) -> str:
+    """
+    Get Kraken top gainers and losers.
+    
+    Args:
+        limit: Number of results per category
+    
+    Returns:
+        JSON with top gainers and losers
+    """
+    import json
+    try:
+        result = await kraken_top_movers(limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_market_snapshot_tool(symbol: str = "BTC") -> str:
+    """
+    Get comprehensive Kraken market snapshot.
+    
+    Args:
+        symbol: Base symbol (BTC, ETH, SOL, etc.)
+    
+    Returns:
+        JSON with combined spot and futures data
+    """
+    import json
+    try:
+        result = await kraken_market_snapshot(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def kraken_full_analysis_tool(symbol: str = "BTC") -> str:
+    """
+    Get full Kraken analysis with trading signals.
+    
+    Args:
+        symbol: Base symbol (BTC, ETH, SOL, etc.)
+    
+    Returns:
+        JSON with comprehensive analysis and signals
+    """
+    import json
+    try:
+        result = await kraken_full_analysis(symbol)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# GATE.IO FUTURES REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def gateio_futures_contracts(settle: str = "usdt") -> str:
+    """
+    Get all Gate.io futures contracts.
+    
+    Args:
+        settle: Settlement currency - 'usdt' or 'btc'
+    
+    Returns:
+        JSON with all futures contract specifications
+    """
+    import json
+    try:
+        result = await gateio_futures_contracts_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_futures_contract(contract: str, settle: str = "usdt") -> str:
+    """
+    Get single Gate.io futures contract info.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+    
+    Returns:
+        JSON with contract specifications and current state
+    """
+    import json
+    try:
+        result = await gateio_futures_contract_tool(contract, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_futures_ticker(contract: str, settle: str = "usdt") -> str:
+    """
+    Get Gate.io futures ticker.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+    
+    Returns:
+        JSON with current ticker data
+    """
+    import json
+    try:
+        result = await gateio_futures_ticker_tool(contract, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_all_futures_tickers(settle: str = "usdt") -> str:
+    """
+    Get all Gate.io futures tickers.
+    
+    Args:
+        settle: Settlement currency - 'usdt' or 'btc'
+    
+    Returns:
+        JSON with all futures tickers sorted by volume
+    """
+    import json
+    try:
+        result = await gateio_all_futures_tickers_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_futures_orderbook(contract: str, settle: str = "usdt", limit: int = 50) -> str:
+    """
+    Get Gate.io futures orderbook.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+        limit: Depth limit (max 50)
+    
+    Returns:
+        JSON with orderbook bids and asks
+    """
+    import json
+    try:
+        result = await gateio_futures_orderbook_tool(contract, settle, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_futures_trades(contract: str, settle: str = "usdt", limit: int = 100) -> str:
+    """
+    Get Gate.io futures recent trades.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+        limit: Number of trades (max 1000)
+    
+    Returns:
+        JSON with recent trades and volume statistics
+    """
+    import json
+    try:
+        result = await gateio_futures_trades_tool(contract, settle, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_futures_klines(contract: str, interval: str = "1h", settle: str = "usdt", limit: int = 100) -> str:
+    """
+    Get Gate.io futures candlesticks.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        interval: Kline interval (10s, 1m, 5m, 15m, 30m, 1h, 4h, 8h, 1d, 7d, 30d)
+        settle: Settlement currency
+        limit: Number of candles (max 2000)
+    
+    Returns:
+        JSON with OHLCV candlestick data
+    """
+    import json
+    try:
+        result = await gateio_futures_klines_tool(contract, interval, settle, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_funding_rate(contract: str, settle: str = "usdt", limit: int = 100) -> str:
+    """
+    Get Gate.io funding rate history.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+        limit: Number of records (max 1000)
+    
+    Returns:
+        JSON with funding rate history and annualized rate
+    """
+    import json
+    try:
+        result = await gateio_funding_rate_tool(contract, settle, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_all_funding_rates(settle: str = "usdt") -> str:
+    """
+    Get funding rates for all Gate.io perpetuals.
+    
+    Args:
+        settle: Settlement currency
+    
+    Returns:
+        JSON with all funding rates sorted by absolute value
+    """
+    import json
+    try:
+        result = await gateio_all_funding_rates_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_contract_stats(contract: str, settle: str = "usdt", interval: str = "1h", limit: int = 24) -> str:
+    """
+    Get Gate.io contract statistics (OI, liquidations, L/S ratio).
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+        interval: Stats interval (5m, 1h, 1d)
+        limit: Number of records (max 100)
+    
+    Returns:
+        JSON with contract statistics including OI and liquidations
+    """
+    import json
+    try:
+        result = await gateio_contract_stats_tool(contract, settle, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_open_interest(settle: str = "usdt") -> str:
+    """
+    Get open interest for top Gate.io contracts.
+    
+    Args:
+        settle: Settlement currency
+    
+    Returns:
+        JSON with open interest for top contracts by volume
+    """
+    import json
+    try:
+        result = await gateio_open_interest_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_liquidations(settle: str = "usdt", contract: str = None, limit: int = 100) -> str:
+    """
+    Get Gate.io liquidation history.
+    
+    Args:
+        settle: Settlement currency
+        contract: Optional contract filter
+        limit: Number of records (max 1000)
+    
+    Returns:
+        JSON with recent liquidations and statistics
+    """
+    import json
+    try:
+        result = await gateio_liquidations_tool(settle, contract, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_insurance_fund(settle: str = "usdt") -> str:
+    """
+    Get Gate.io insurance fund balance.
+    
+    Args:
+        settle: Settlement currency
+    
+    Returns:
+        JSON with insurance fund balance history
+    """
+    import json
+    try:
+        result = await gateio_insurance_fund_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_risk_limit_tiers(contract: str, settle: str = "usdt") -> str:
+    """
+    Get Gate.io risk limit tiers for a contract.
+    
+    Args:
+        contract: Contract name (e.g., 'BTC_USDT')
+        settle: Settlement currency
+    
+    Returns:
+        JSON with risk limit tiers and margin requirements
+    """
+    import json
+    try:
+        result = await gateio_risk_limit_tiers_tool(contract, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_delivery_contracts(settle: str = "usdt") -> str:
+    """
+    Get all Gate.io delivery futures contracts.
+    
+    Args:
+        settle: Settlement currency
+    
+    Returns:
+        JSON with delivery futures contracts
+    """
+    import json
+    try:
+        result = await gateio_delivery_contracts_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_delivery_ticker(contract: str, settle: str = "usdt") -> str:
+    """
+    Get Gate.io delivery futures ticker.
+    
+    Args:
+        contract: Contract name
+        settle: Settlement currency
+    
+    Returns:
+        JSON with delivery futures ticker
+    """
+    import json
+    try:
+        result = await gateio_delivery_ticker_tool(contract, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_underlyings() -> str:
+    """
+    Get Gate.io options underlying assets.
+    
+    Returns:
+        JSON with available underlying assets for options
+    """
+    import json
+    try:
+        result = await gateio_options_underlyings_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_expirations(underlying: str) -> str:
+    """
+    Get Gate.io options expiration dates.
+    
+    Args:
+        underlying: Underlying asset (e.g., 'BTC_USDT')
+    
+    Returns:
+        JSON with expiration timestamps
+    """
+    import json
+    try:
+        result = await gateio_options_expirations_tool(underlying)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_contracts(underlying: str, expiration: int = None) -> str:
+    """
+    Get Gate.io options contracts.
+    
+    Args:
+        underlying: Underlying asset (e.g., 'BTC_USDT')
+        expiration: Optional expiration timestamp filter
+    
+    Returns:
+        JSON with options contracts (calls and puts)
+    """
+    import json
+    try:
+        result = await gateio_options_contracts_tool(underlying, expiration)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_tickers(underlying: str) -> str:
+    """
+    Get Gate.io options tickers with Greeks.
+    
+    Args:
+        underlying: Underlying asset (e.g., 'BTC_USDT')
+    
+    Returns:
+        JSON with options tickers including delta, gamma, vega, theta
+    """
+    import json
+    try:
+        result = await gateio_options_tickers_tool(underlying)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_underlying_ticker(underlying: str) -> str:
+    """
+    Get Gate.io underlying ticker for options.
+    
+    Args:
+        underlying: Underlying asset (e.g., 'BTC_USDT')
+    
+    Returns:
+        JSON with underlying asset ticker
+    """
+    import json
+    try:
+        result = await gateio_options_underlying_ticker_tool(underlying)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_options_orderbook(contract: str, limit: int = 20) -> str:
+    """
+    Get Gate.io options orderbook.
+    
+    Args:
+        contract: Options contract name
+        limit: Depth limit (max 50)
+    
+    Returns:
+        JSON with options orderbook
+    """
+    import json
+    try:
+        result = await gateio_options_orderbook_tool(contract, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_market_snapshot(symbol: str = "BTC", settle: str = "usdt") -> str:
+    """
+    Get comprehensive Gate.io market snapshot.
+    
+    Args:
+        symbol: Trading pair symbol (e.g., 'BTC')
+        settle: Settlement currency
+    
+    Returns:
+        JSON with comprehensive market data including ticker, funding, OI, orderbook
+    """
+    import json
+    try:
+        result = await gateio_market_snapshot_tool(symbol, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_top_movers(settle: str = "usdt", limit: int = 10) -> str:
+    """
+    Get top gainers and losers on Gate.io.
+    
+    Args:
+        settle: Settlement currency
+        limit: Number of movers to return
+    
+    Returns:
+        JSON with top gainers and losers by price change
+    """
+    import json
+    try:
+        result = await gateio_top_movers_tool(settle, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_full_analysis(symbol: str = "BTC", settle: str = "usdt") -> str:
+    """
+    Get full Gate.io analysis with trading signals.
+    
+    Args:
+        symbol: Trading pair symbol (e.g., 'BTC')
+        settle: Settlement currency
+    
+    Returns:
+        JSON with comprehensive analysis and signals for funding, basis, L/S ratio, etc.
+    """
+    import json
+    try:
+        result = await gateio_full_analysis_tool(symbol, settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def gateio_perpetuals(settle: str = "usdt") -> str:
+    """
+    Get all Gate.io perpetual futures.
+    
+    Args:
+        settle: Settlement currency
+    
+    Returns:
+        JSON with all perpetual contracts and ticker data
+    """
+    import json
+    try:
+        result = await gateio_perpetuals_tool(settle)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# HYPERLIQUID REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def hyperliquid_meta() -> str:
+    """
+    Get Hyperliquid exchange metadata.
+    
+    Returns:
+        JSON with exchange metadata including all perpetual contracts and universe info
+    """
+    import json
+    try:
+        result = await hyperliquid_meta_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_all_mids() -> str:
+    """
+    Get all mid prices for Hyperliquid perpetuals.
+    
+    Returns:
+        JSON with all mid prices mapped by coin symbol
+    """
+    import json
+    try:
+        result = await hyperliquid_all_mids_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_ticker(coin: str) -> str:
+    """
+    Get Hyperliquid ticker for a specific coin.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+    
+    Returns:
+        JSON with ticker data including price, funding, OI, volume
+    """
+    import json
+    try:
+        result = await hyperliquid_ticker_tool(coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_all_tickers() -> str:
+    """
+    Get all Hyperliquid perpetual tickers.
+    
+    Returns:
+        JSON with all perpetual tickers sorted by volume (top 50)
+    """
+    import json
+    try:
+        result = await hyperliquid_all_tickers_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_orderbook(coin: str, depth: int = 20) -> str:
+    """
+    Get Hyperliquid orderbook for a coin.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+        depth: Number of levels to return (default: 20)
+    
+    Returns:
+        JSON with orderbook including bids, asks, and analysis metrics
+    """
+    import json
+    try:
+        result = await hyperliquid_orderbook_tool(coin, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_klines(coin: str, interval: str = "1h", limit: int = 100) -> str:
+    """
+    Get Hyperliquid candlestick data.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+        interval: Kline interval (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M)
+        limit: Number of candles (approximated by time range, default: 100)
+    
+    Returns:
+        JSON with OHLCV candlestick data
+    """
+    import json
+    try:
+        result = await hyperliquid_klines_tool(coin, interval, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_funding_rate(coin: str, limit: int = 100) -> str:
+    """
+    Get Hyperliquid funding rate history.
+    
+    Hyperliquid has hourly funding (unlike most exchanges with 8-hour).
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+        limit: Number of records (hours, default: 100)
+    
+    Returns:
+        JSON with funding rate history and analysis
+    """
+    import json
+    try:
+        result = await hyperliquid_funding_rate_tool(coin, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_all_funding_rates() -> str:
+    """
+    Get funding rates for all Hyperliquid perpetuals.
+    
+    Returns:
+        JSON with all funding rates sorted by absolute value
+    """
+    import json
+    try:
+        result = await hyperliquid_all_funding_rates_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_open_interest() -> str:
+    """
+    Get open interest for all Hyperliquid perpetuals.
+    
+    Returns:
+        JSON with open interest data sorted by USD value
+    """
+    import json
+    try:
+        result = await hyperliquid_open_interest_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_top_movers(limit: int = 10) -> str:
+    """
+    Get top gainers and losers on Hyperliquid.
+    
+    Args:
+        limit: Number of movers per category (default: 10)
+    
+    Returns:
+        JSON with top gainers and losers by price change
+    """
+    import json
+    try:
+        result = await hyperliquid_top_movers_tool(limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_exchange_stats() -> str:
+    """
+    Get overall Hyperliquid exchange statistics.
+    
+    Returns:
+        JSON with aggregated stats including total OI, volume, and extremes
+    """
+    import json
+    try:
+        result = await hyperliquid_exchange_stats_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_spot_meta() -> str:
+    """
+    Get Hyperliquid spot market metadata.
+    
+    Returns:
+        JSON with spot market tokens and universe info
+    """
+    import json
+    try:
+        result = await hyperliquid_spot_meta_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_spot_meta_and_ctxs() -> str:
+    """
+    Get Hyperliquid spot metadata and asset contexts.
+    
+    Returns:
+        JSON with spot meta and current market contexts
+    """
+    import json
+    try:
+        result = await hyperliquid_spot_meta_and_ctxs_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_market_snapshot(coin: str = "BTC") -> str:
+    """
+    Get comprehensive Hyperliquid market snapshot.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+    
+    Returns:
+        JSON with combined ticker, orderbook, and funding data
+    """
+    import json
+    try:
+        result = await hyperliquid_market_snapshot_tool(coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_full_analysis(coin: str = "BTC") -> str:
+    """
+    Get full Hyperliquid analysis with trading signals.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+    
+    Returns:
+        JSON with comprehensive analysis and signals for funding, premium, orderbook
+    """
+    import json
+    try:
+        result = await hyperliquid_full_analysis_tool(coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_perpetuals() -> str:
+    """
+    Get all Hyperliquid perpetual contracts.
+    
+    Returns:
+        JSON with all perpetual contracts and current market data
+    """
+    import json
+    try:
+        result = await hyperliquid_perpetuals_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def hyperliquid_recent_trades(coin: str) -> str:
+    """
+    Get recent trade activity approximation for a coin.
+    
+    Note: Uses orderbook data as proxy since Hyperliquid doesn't expose
+    direct trade history via public API.
+    
+    Args:
+        coin: Coin symbol (e.g., 'BTC', 'ETH')
+    
+    Returns:
+        JSON with orderbook summary as trade activity proxy
+    """
+    import json
+    try:
+        result = await hyperliquid_recent_trades_tool(coin)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# DERIBIT REST API MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def deribit_instruments(currency: str = "BTC", kind: str = None) -> str:
+    """
+    Get all Deribit instruments for a currency.
+    
+    Args:
+        currency: Currency (BTC, ETH, SOL, USDC, USDT)
+        kind: Optional filter (future, option, spot)
+    
+    Returns:
+        JSON with instrument specifications
+    """
+    import json
+    try:
+        result = await deribit_instruments_tool(currency, kind)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_currencies() -> str:
+    """
+    Get all supported currencies on Deribit.
+    
+    Returns:
+        JSON with currency information
+    """
+    import json
+    try:
+        result = await deribit_currencies_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_ticker(instrument_name: str) -> str:
+    """
+    Get Deribit ticker for an instrument.
+    
+    Args:
+        instrument_name: Instrument name (e.g., 'BTC-PERPETUAL', 'ETH-28MAR25')
+    
+    Returns:
+        JSON with ticker data including prices, volume, OI, Greeks (for options)
+    """
+    import json
+    try:
+        result = await deribit_ticker_tool(instrument_name)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_perpetual_ticker(currency: str = "BTC") -> str:
+    """
+    Get Deribit perpetual ticker with funding rate.
+    
+    Args:
+        currency: Currency (BTC, ETH, SOL)
+    
+    Returns:
+        JSON with perpetual ticker including price, funding, OI, volume
+    """
+    import json
+    try:
+        result = await deribit_perpetual_ticker_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_all_perpetual_tickers() -> str:
+    """
+    Get tickers for all Deribit perpetuals (BTC, ETH, SOL).
+    
+    Returns:
+        JSON with all perpetual tickers
+    """
+    import json
+    try:
+        result = await deribit_all_perpetual_tickers_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_futures_tickers(currency: str = "BTC") -> str:
+    """
+    Get all futures tickers for a currency.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with all futures tickers including perpetual and dated futures
+    """
+    import json
+    try:
+        result = await deribit_futures_tickers_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_orderbook(instrument_name: str, depth: int = 20) -> str:
+    """
+    Get Deribit orderbook for an instrument.
+    
+    Args:
+        instrument_name: Instrument name
+        depth: Number of levels (1-10000)
+    
+    Returns:
+        JSON with orderbook including bids, asks, spread, imbalance
+    """
+    import json
+    try:
+        result = await deribit_orderbook_tool(instrument_name, depth)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_trades(instrument_name: str, count: int = 100) -> str:
+    """
+    Get recent trades for a Deribit instrument.
+    
+    Args:
+        instrument_name: Instrument name
+        count: Number of trades (1-1000)
+    
+    Returns:
+        JSON with recent trades and buy/sell analysis
+    """
+    import json
+    try:
+        result = await deribit_trades_tool(instrument_name, count)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_trades_by_currency(currency: str = "BTC", kind: str = None, count: int = 100) -> str:
+    """
+    Get recent trades for a currency.
+    
+    Args:
+        currency: Currency
+        kind: Optional filter (future, option)
+        count: Number of trades
+    
+    Returns:
+        JSON with recent trades across instruments
+    """
+    import json
+    try:
+        result = await deribit_trades_by_currency_tool(currency, kind, count)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_index_price(currency: str = "BTC") -> str:
+    """
+    Get Deribit index price.
+    
+    Args:
+        currency: Currency (BTC, ETH)
+    
+    Returns:
+        JSON with index price and estimated delivery price
+    """
+    import json
+    try:
+        result = await deribit_index_price_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_index_names() -> str:
+    """
+    Get all available index price names on Deribit.
+    
+    Returns:
+        JSON with list of available indices
+    """
+    import json
+    try:
+        result = await deribit_index_names_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_funding_rate(currency: str = "BTC") -> str:
+    """
+    Get current funding rate for Deribit perpetual.
+    
+    Deribit has hourly funding (vs 8-hour on most exchanges).
+    
+    Args:
+        currency: Currency (BTC, ETH, SOL)
+    
+    Returns:
+        JSON with current funding rate and annualized rate
+    """
+    import json
+    try:
+        result = await deribit_funding_rate_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_funding_history(currency: str = "BTC", hours: int = 24) -> str:
+    """
+    Get funding rate history.
+    
+    Args:
+        currency: Currency
+        hours: Number of hours of history
+    
+    Returns:
+        JSON with funding rate history and statistics
+    """
+    import json
+    try:
+        result = await deribit_funding_history_tool(currency, hours)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_funding_analysis(currency: str = "BTC") -> str:
+    """
+    Get comprehensive funding rate analysis.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with funding analysis and statistics
+    """
+    import json
+    try:
+        result = await deribit_funding_analysis_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_historical_volatility(currency: str = "BTC") -> str:
+    """
+    Get historical volatility data.
+    
+    Args:
+        currency: Currency (BTC or ETH)
+    
+    Returns:
+        JSON with historical volatility time series
+    """
+    import json
+    try:
+        result = await deribit_historical_volatility_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_dvol(currency: str = "BTC", hours: int = 24) -> str:
+    """
+    Get DVOL (Deribit Volatility Index) data.
+    
+    DVOL is similar to VIX for crypto, showing implied volatility.
+    
+    Args:
+        currency: Currency (BTC or ETH)
+        hours: Hours of history
+    
+    Returns:
+        JSON with DVOL time series and OHLC
+    """
+    import json
+    try:
+        result = await deribit_dvol_tool(currency, hours)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_klines(instrument_name: str, resolution: str = "60", hours: int = 24) -> str:
+    """
+    Get OHLCV candlestick data.
+    
+    Args:
+        instrument_name: Instrument name
+        resolution: Resolution in minutes (1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1D)
+        hours: Hours of history
+    
+    Returns:
+        JSON with OHLCV candlestick data
+    """
+    import json
+    try:
+        result = await deribit_klines_tool(instrument_name, resolution, hours)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_open_interest(currency: str = "BTC") -> str:
+    """
+    Get open interest for a currency.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with open interest for futures and options
+    """
+    import json
+    try:
+        result = await deribit_open_interest_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_options_summary(currency: str = "BTC") -> str:
+    """
+    Get options market summary.
+    
+    Deribit is the largest crypto options exchange.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with aggregated options statistics including put/call ratio
+    """
+    import json
+    try:
+        result = await deribit_options_summary_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_options_chain(currency: str = "BTC", expiration: str = None) -> str:
+    """
+    Get options chain.
+    
+    Args:
+        currency: Currency
+        expiration: Optional expiration filter (e.g., '28MAR25')
+    
+    Returns:
+        JSON with options chain organized by expiration and strike
+    """
+    import json
+    try:
+        result = await deribit_options_chain_tool(currency, expiration)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_option_ticker(instrument_name: str) -> str:
+    """
+    Get option ticker with Greeks.
+    
+    Args:
+        instrument_name: Option instrument name (e.g., 'BTC-28MAR25-100000-C')
+    
+    Returns:
+        JSON with option ticker including IV, delta, gamma, theta, vega
+    """
+    import json
+    try:
+        result = await deribit_option_ticker_tool(instrument_name)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_top_options(currency: str = "BTC", limit: int = 20) -> str:
+    """
+    Get top options by open interest.
+    
+    Args:
+        currency: Currency
+        limit: Number of options to return
+    
+    Returns:
+        JSON with top calls and puts by OI
+    """
+    import json
+    try:
+        result = await deribit_top_options_tool(currency, limit)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_market_snapshot(currency: str = "BTC") -> str:
+    """
+    Get comprehensive Deribit market snapshot.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with combined perpetual, index, volatility, OI data
+    """
+    import json
+    try:
+        result = await deribit_market_snapshot_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_full_analysis(currency: str = "BTC") -> str:
+    """
+    Get full Deribit analysis with trading signals.
+    
+    Args:
+        currency: Currency
+    
+    Returns:
+        JSON with comprehensive analysis including funding, options, volatility signals
+    """
+    import json
+    try:
+        result = await deribit_full_analysis_tool(currency)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_exchange_stats() -> str:
+    """
+    Get overall Deribit exchange statistics.
+    
+    Returns:
+        JSON with aggregated stats for all currencies
+    """
+    import json
+    try:
+        result = await deribit_exchange_stats_tool()
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_book_summary(currency: str = "BTC", kind: str = None) -> str:
+    """
+    Get book summary for all instruments.
+    
+    Args:
+        currency: Currency
+        kind: Optional filter (future, option)
+    
+    Returns:
+        JSON with book summaries including volume, OI, prices
+    """
+    import json
+    try:
+        result = await deribit_book_summary_tool(currency, kind)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+async def deribit_settlements(currency: str = "BTC", count: int = 20) -> str:
+    """
+    Get recent settlements.
+    
+    Args:
+        currency: Currency
+        count: Number of records
+    
+    Returns:
+        JSON with recent settlement records
+    """
+    import json
+    try:
+        result = await deribit_settlements_tool(currency, count)
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
@@ -1888,6 +5461,154 @@ def main():
     logger.info("    • stream_and_analyze           - Stream for X seconds and analyze")
     logger.info("    • quick_analyze                - Quick 10-second market snapshot")
     logger.info("    • analyze_for_duration         - Analyze for X minutes with focus")
+    logger.info("")
+    logger.info("  BINANCE FUTURES REST API TOOLS:")
+    logger.info("    • binance_ticker_tool          - 24h ticker statistics")
+    logger.info("    • binance_orderbook_tool       - Full orderbook (up to 1000 levels)")
+    logger.info("    • binance_trades_tool          - Recent aggregated trades")
+    logger.info("    • binance_klines_tool          - OHLCV candlestick data")
+    logger.info("    • binance_open_interest_tool   - Current open interest")
+    logger.info("    • binance_open_interest_history_tool - Historical OI")
+    logger.info("    • binance_funding_rate_tool    - Historical funding rates")
+    logger.info("    • binance_premium_index_tool   - Mark/index prices & basis")
+    logger.info("    • binance_long_short_ratio_tool - Long/short positioning")
+    logger.info("    • binance_taker_volume_tool    - Taker buy/sell ratio")
+    logger.info("    • binance_basis_tool           - Futures basis data")
+    logger.info("    • binance_liquidations_tool    - Recent liquidation orders")
+    logger.info("    • binance_snapshot_tool        - Comprehensive market snapshot")
+    logger.info("    • binance_full_analysis_tool   - Full analysis with signals")
+    logger.info("")
+    logger.info("  BYBIT SPOT REST API TOOLS:")
+    logger.info("    • bybit_spot_ticker_tool       - Spot ticker with 24h stats")
+    logger.info("    • bybit_spot_orderbook_tool    - Spot orderbook (up to 200 levels)")
+    logger.info("    • bybit_spot_trades_tool       - Recent spot trades")
+    logger.info("    • bybit_spot_klines_tool       - Spot OHLCV candlesticks")
+    logger.info("    • bybit_all_spot_tickers_tool  - All spot tickers summary")
+    logger.info("")
+    logger.info("  BYBIT FUTURES REST API TOOLS:")
+    logger.info("    • bybit_futures_ticker_tool    - Perpetual ticker + funding/OI")
+    logger.info("    • bybit_futures_orderbook_tool - Futures orderbook (up to 500 levels)")
+    logger.info("    • bybit_open_interest_tool     - OI history with trend analysis")
+    logger.info("    • bybit_funding_rate_tool      - Funding rate history")
+    logger.info("    • bybit_long_short_ratio_tool  - Long/short positioning")
+    logger.info("    • bybit_historical_volatility_tool - Historical volatility (options)")
+    logger.info("    • bybit_insurance_fund_tool    - Insurance fund status")
+    logger.info("    • bybit_all_perpetual_tickers_tool - All perpetuals summary")
+    logger.info("")
+    logger.info("  BYBIT ANALYSIS TOOLS:")
+    logger.info("    • bybit_derivatives_analysis_tool - Full derivatives analysis")
+    logger.info("    • bybit_market_snapshot_tool   - Complete market snapshot")
+    logger.info("    • bybit_instruments_info_tool  - Contract specifications")
+    logger.info("    • bybit_options_overview_tool  - Options market overview")
+    logger.info("    • bybit_risk_limit_tool        - Risk limit tiers")
+    logger.info("    • bybit_announcements_tool     - Platform announcements")
+    logger.info("    • bybit_full_market_analysis_tool - Full analysis with signals")
+    logger.info("")
+    logger.info("  BINANCE SPOT REST API TOOLS:")
+    logger.info("    • binance_spot_ticker_tool     - 24h ticker statistics")
+    logger.info("    • binance_spot_price_tool      - Current price(s)")
+    logger.info("    • binance_spot_orderbook_tool  - Orderbook depth (up to 5000 levels)")
+    logger.info("    • binance_spot_trades_tool     - Recent trades with flow analysis")
+    logger.info("    • binance_spot_klines_tool     - OHLCV candlesticks (1s to 1M)")
+    logger.info("    • binance_spot_avg_price_tool  - 5-minute average price")
+    logger.info("    • binance_spot_book_ticker_tool - Best bid/ask prices")
+    logger.info("    • binance_spot_agg_trades_tool - Aggregate trades")
+    logger.info("    • binance_spot_exchange_info_tool - Exchange info & rules")
+    logger.info("    • binance_spot_rolling_ticker_tool - Rolling window stats")
+    logger.info("    • binance_spot_all_tickers_tool - All tickers + top movers")
+    logger.info("    • binance_spot_snapshot_tool   - Comprehensive market snapshot")
+    logger.info("    • binance_spot_full_analysis_tool - Full analysis with signals")
+    logger.info("")
+    logger.info("  OKX REST API TOOLS:")
+    logger.info("    • okx_ticker_tool              - Single ticker (spot/swap/futures)")
+    logger.info("    • okx_all_tickers_tool         - All tickers by type")
+    logger.info("    • okx_index_ticker_tool        - Index price ticker")
+    logger.info("    • okx_orderbook_tool           - Orderbook depth (up to 400 levels)")
+    logger.info("    • okx_trades_tool              - Recent trades with flow analysis")
+    logger.info("    • okx_klines_tool              - OHLCV candlesticks")
+    logger.info("    • okx_funding_rate_tool        - Current funding rate")
+    logger.info("    • okx_funding_rate_history_tool - Historical funding rates")
+    logger.info("    • okx_open_interest_tool       - Open interest data")
+    logger.info("    • okx_oi_volume_tool           - OI and volume history")
+    logger.info("    • okx_long_short_ratio_tool    - Long/short account ratio")
+    logger.info("    • okx_taker_volume_tool        - Taker buy/sell volume")
+    logger.info("    • okx_instruments_tool         - Instrument specifications")
+    logger.info("    • okx_mark_price_tool          - Mark prices")
+    logger.info("    • okx_insurance_fund_tool      - Insurance fund balance")
+    logger.info("    • okx_platform_volume_tool     - 24h platform volume")
+    logger.info("    • okx_options_summary_tool     - Options market summary")
+    logger.info("    • okx_market_snapshot_tool     - Comprehensive snapshot")
+    logger.info("    • okx_full_analysis_tool       - Full analysis with signals")
+    logger.info("    • okx_top_movers_tool          - Top gainers/losers")
+    logger.info("")
+    logger.info("  KRAKEN REST API TOOLS (21 endpoints):")
+    logger.info("    • kraken_spot_ticker_tool       - Spot ticker with analysis")
+    logger.info("    • kraken_all_spot_tickers_tool  - Multiple spot tickers")
+    logger.info("    • kraken_spot_orderbook_tool    - Spot orderbook depth")
+    logger.info("    • kraken_spot_trades_tool       - Recent spot trades")
+    logger.info("    • kraken_spot_klines_tool       - Spot OHLC candlesticks")
+    logger.info("    • kraken_spread_tool            - Recent spread data")
+    logger.info("    • kraken_assets_tool            - Supported assets")
+    logger.info("    • kraken_spot_pairs_tool        - Trading pair specs")
+    logger.info("    • kraken_futures_ticker_tool    - Futures/perpetual ticker")
+    logger.info("    • kraken_all_futures_tickers_tool - All futures tickers")
+    logger.info("    • kraken_futures_orderbook_tool - Futures orderbook")
+    logger.info("    • kraken_futures_trades_tool    - Futures trades")
+    logger.info("    • kraken_futures_klines_tool    - Futures candlesticks")
+    logger.info("    • kraken_futures_instruments_tool - Instrument specs")
+    logger.info("    • kraken_funding_rates_tool     - All funding rates")
+    logger.info("    • kraken_open_interest_tool     - All open interest")
+    logger.info("    • kraken_system_status_tool     - System status")
+    logger.info("    • kraken_top_movers_tool        - Top gainers/losers")
+    logger.info("    • kraken_market_snapshot_tool   - Comprehensive snapshot")
+    logger.info("    • kraken_full_analysis_tool     - Full analysis + signals")
+    logger.info("")
+    logger.info("  GATE.IO FUTURES REST API TOOLS (27 endpoints):")
+    logger.info("    • gateio_futures_contracts      - All futures contract specs")
+    logger.info("    • gateio_futures_contract       - Single contract info")
+    logger.info("    • gateio_futures_ticker         - Futures ticker")
+    logger.info("    • gateio_all_futures_tickers    - All futures tickers")
+    logger.info("    • gateio_futures_orderbook      - Futures orderbook (50 levels)")
+    logger.info("    • gateio_futures_trades         - Recent futures trades")
+    logger.info("    • gateio_futures_klines         - Futures candlesticks")
+    logger.info("    • gateio_funding_rate           - Funding rate history")
+    logger.info("    • gateio_all_funding_rates      - All perpetual funding rates")
+    logger.info("    • gateio_contract_stats         - OI, liquidations, L/S ratio")
+    logger.info("    • gateio_open_interest          - Top contracts OI")
+    logger.info("    • gateio_liquidations           - Liquidation history")
+    logger.info("    • gateio_insurance_fund         - Insurance fund balance")
+    logger.info("    • gateio_risk_limit_tiers       - Risk limit tiers")
+    logger.info("    • gateio_delivery_contracts     - Delivery futures contracts")
+    logger.info("    • gateio_delivery_ticker        - Delivery futures ticker")
+    logger.info("    • gateio_options_underlyings    - Options underlying assets")
+    logger.info("    • gateio_options_expirations    - Options expiration dates")
+    logger.info("    • gateio_options_contracts      - Options contracts (calls/puts)")
+    logger.info("    • gateio_options_tickers        - Options tickers with Greeks")
+    logger.info("    • gateio_options_underlying_ticker - Underlying asset ticker")
+    logger.info("    • gateio_options_orderbook      - Options orderbook")
+    logger.info("    • gateio_market_snapshot        - Comprehensive market snapshot")
+    logger.info("    • gateio_top_movers             - Top gainers/losers")
+    logger.info("    • gateio_full_analysis          - Full analysis + signals")
+    logger.info("    • gateio_perpetuals             - All perpetual contracts")
+    logger.info("")
+    logger.info("  HYPERLIQUID REST API TOOLS (17 endpoints):")
+    logger.info("    • hyperliquid_meta              - Exchange metadata & perpetuals")
+    logger.info("    • hyperliquid_all_mids          - All mid prices")
+    logger.info("    • hyperliquid_ticker            - Single coin ticker")
+    logger.info("    • hyperliquid_all_tickers       - All perpetual tickers")
+    logger.info("    • hyperliquid_orderbook         - L2 orderbook")
+    logger.info("    • hyperliquid_klines            - OHLCV candlesticks")
+    logger.info("    • hyperliquid_funding_rate      - Funding rate history (hourly)")
+    logger.info("    • hyperliquid_all_funding_rates - All funding rates")
+    logger.info("    • hyperliquid_open_interest     - All open interest")
+    logger.info("    • hyperliquid_top_movers        - Top gainers/losers")
+    logger.info("    • hyperliquid_exchange_stats    - Exchange-wide statistics")
+    logger.info("    • hyperliquid_spot_meta         - Spot market metadata")
+    logger.info("    • hyperliquid_spot_meta_and_ctxs - Spot meta + contexts")
+    logger.info("    • hyperliquid_market_snapshot   - Comprehensive snapshot")
+    logger.info("    • hyperliquid_full_analysis     - Full analysis + signals")
+    logger.info("    • hyperliquid_perpetuals        - All perpetual contracts")
+    logger.info("    • hyperliquid_recent_trades     - Trade activity proxy")
     logger.info("")
     logger.info("  SUPPORTED SYMBOLS: BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT")
     logger.info("=" * 70)

@@ -3,10 +3,11 @@
 ## 📊 Available Data Streams
 
 ### 1. **PRICES** Stream
+
 **Exchanges**: All 9 (Binance Futures/Spot, Bybit Futures/Spot, OKX, Kraken, Gate.io, Hyperliquid, Pyth)
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `price` | float | Current mid-price or last trade price |
 | `timestamp` | int | Unix timestamp in milliseconds |
 | `exchange` | string | Exchange identifier |
@@ -16,10 +17,11 @@
 ---
 
 ### 2. **ORDERBOOK** Stream
+
 **Exchanges**: Binance Futures, OKX Futures, Kraken Futures, Hyperliquid
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `bids[]` | array | Array of {price, quantity} bid levels (top 10-50) |
 | `asks[]` | array | Array of {price, quantity} ask levels (top 10-50) |
 | `spread` | float | Difference between best ask and best bid ($) |
@@ -29,6 +31,7 @@
 | `timestamp` | int | Unix timestamp in milliseconds |
 
 **Bid/Ask Level Structure**:
+
 ```json
 {
   "price": 96833.00,
@@ -41,10 +44,11 @@
 ---
 
 ### 3. **TRADES** Stream
+
 **Exchanges**: All 9
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `price` | float | Trade execution price |
 | `quantity` | float | Trade size (in base currency) |
 | `side` | string | "buy" or "sell" |
@@ -60,10 +64,11 @@
 ---
 
 ### 4. **FUNDING RATES** Stream (Futures Only)
+
 **Exchanges**: Binance Futures, OKX Futures, Kraken Futures, Gate.io Futures
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `rate` | float | Raw funding rate (e.g., 0.0001 = 0.01%) |
 | `rate_pct` | float | Funding rate as percentage |
 | `annualized_rate` | float | Annualized funding rate (%) |
@@ -79,10 +84,11 @@
 ---
 
 ### 5. **MARK PRICES** Stream (Futures Only)
+
 **Exchanges**: Binance Futures, OKX Futures, Kraken Futures, Gate.io Futures
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `mark_price` | float | Fair price used for liquidations |
 | `index_price` | float | Spot index price (weighted average) |
 | `basis` | float | mark_price - index_price ($) |
@@ -98,10 +104,11 @@
 ---
 
 ### 6. **LIQUIDATIONS** Stream (Futures Only)
+
 **Exchanges**: Binance Futures, Bybit Futures, OKX Futures, Gate.io Futures
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `price` | float | Liquidation execution price |
 | `quantity` | float | Liquidated position size |
 | `side` | string | "buy" (long liq) or "sell" (short liq) |
@@ -116,10 +123,11 @@
 ---
 
 ### 7. **OPEN INTEREST** Stream (Futures Only)
+
 **Exchanges**: OKX Futures, Kraken Futures, Gate.io Futures
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `open_interest` | float | Total outstanding contracts |
 | `open_interest_value` | float | OI value in USD (if available) |
 | `timestamp` | int | Unix timestamp in milliseconds |
@@ -133,10 +141,11 @@
 ---
 
 ### 8. **24H TICKER** Stream
+
 **Exchanges**: Binance Futures/Spot, OKX Futures, Kraken Futures, Gate.io Futures
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | `volume` | float | 24h trading volume (base currency) |
 | `quote_volume` | float | 24h trading volume (quote currency, USD) |
 | `high_24h` | float | 24h high price |
@@ -155,7 +164,7 @@
 ## 🔌 Exchange Coverage
 
 | Exchange | Prices | Orderbook | Trades | Funding | Mark Price | Liquidations | Open Interest | 24h Ticker |
-|----------|--------|-----------|--------|---------|------------|--------------|---------------|------------|
+| -------- | ------ | --------- | ------ | ------- | ---------- | ------------ | ------------- | ---------- |
 | **Binance Futures** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Binance Spot** | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Bybit Futures** | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
@@ -171,7 +180,7 @@
 ## 📋 MCP Tools Summary
 
 | Tool | Returns | Description |
-|------|---------|-------------|
+| ---- | ------- | ----------- |
 | `get_crypto_prices(symbol)` | All prices | Current prices from all exchanges |
 | `get_orderbook_data(symbol, exchange)` | Orderbooks | Bid/ask depth with spread analysis |
 | `get_recent_trades(symbol, exchange, limit)` | Trades | Recent trades with buy/sell volume |

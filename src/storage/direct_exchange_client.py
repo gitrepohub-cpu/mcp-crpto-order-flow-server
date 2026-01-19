@@ -64,7 +64,7 @@ class DirectExchangeClient:
         # Price data (existing)
         self.prices: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {price, bid, ask, timestamp}
         
-        # Order Book Depth - Top 10 levels per exchange
+        # Order Book Depth - Top levels per exchange
         self.orderbooks: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {bids: [], asks: [], timestamp}
         
         # Trade Stream - Recent trades
@@ -87,6 +87,17 @@ class DirectExchangeClient:
         # 24h Statistics
         self.ticker_24h: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {volume, high, low, change_pct}
         
+        # ====================================================================
+        # NEW: OHLCV Candles - 1m candlestick data for technical indicators
+        # ====================================================================
+        self.candles: Dict[str, Dict[str, List]] = {}  # symbol -> exchange -> [candles]
+        self.max_candles = 200  # Keep 200 candles (~3.3 hours of 1m data)
+        
+        # ====================================================================
+        # NEW: Index Prices - Spot index for basis calculation
+        # ====================================================================
+        self.index_prices: Dict[str, Dict[str, Dict]] = {}  # symbol -> exchange -> {price, timestamp}
+        
         # Arbitrage opportunities
         self.arbitrage_opportunities: List[Dict] = []
         self.max_opportunities = 100
@@ -108,6 +119,8 @@ class DirectExchangeClient:
             self.liquidations[symbol] = []
             self.open_interest[symbol] = {}
             self.ticker_24h[symbol] = {}
+            self.candles[symbol] = {}  # NEW
+            self.index_prices[symbol] = {}  # NEW
         
         logger.info("DirectExchangeClient initialized")
     
@@ -184,18 +197,19 @@ class DirectExchangeClient:
     # ========================================================================
     
     async def _connect_binance_futures(self):
-        """Connect to Binance Futures WebSocket - ALL streams."""
+        """Connect to Binance Futures WebSocket - ALL streams including klines & OI."""
         # Build comprehensive stream list for all symbols
         streams = []
         for sym in self.SUPPORTED_SYMBOLS:
             s = sym.lower()
             streams.extend([
                 f"{s}@bookTicker",      # Best bid/ask (fastest)
-                f"{s}@depth10@100ms",   # Top 10 orderbook levels
+                f"{s}@depth20@100ms",   # Top 20 orderbook levels (increased from 10)
                 f"{s}@aggTrade",        # Aggregated trades
-                f"{s}@markPrice@1s",    # Mark price + funding rate
+                f"{s}@markPrice@1s",    # Mark price + funding rate + index price
                 f"{s}@forceOrder",      # Liquidations
                 f"{s}@ticker",          # 24hr ticker stats
+                f"{s}@kline_1m",        # 1-minute candlesticks (NEW)
             ])
         
         url = f"wss://fstream.binance.com/stream?streams={'/'.join(streams)}"
@@ -247,14 +261,19 @@ class DirectExchangeClient:
                         )
                     
                     elif event_type == "markPriceUpdate":
-                        # Mark price + funding rate
+                        # Mark price + funding rate + index price
+                        mark_price = float(payload.get("p", 0))
+                        index_price = float(payload.get("i", 0))
                         await self._update_mark_price(
                             symbol, "binance_futures",
-                            mark_price=float(payload.get("p", 0)),
-                            index_price=float(payload.get("i", 0)),
+                            mark_price=mark_price,
+                            index_price=index_price,
                             funding_rate=float(payload.get("r", 0)),
                             next_funding_time=payload.get("T", 0)
                         )
+                        # Also update index price separately for basis calculation
+                        if index_price > 0:
+                            await self._update_index_price(symbol, "binance_futures", index_price)
                     
                     elif event_type == "forceOrder":
                         # Liquidation
@@ -278,6 +297,25 @@ class DirectExchangeClient:
                             price_change_pct=float(payload.get("P", 0)),
                             trades_count=int(payload.get("n", 0))
                         )
+                    
+                    elif event_type == "kline":
+                        # 1-minute candlestick (NEW)
+                        kline = payload.get("k", {})
+                        if kline.get("x", False):  # Only process closed candles
+                            await self._update_candle(
+                                symbol, "binance_futures",
+                                open_time=kline.get("t", 0),
+                                open_price=float(kline.get("o", 0)),
+                                high_price=float(kline.get("h", 0)),
+                                low_price=float(kline.get("l", 0)),
+                                close_price=float(kline.get("c", 0)),
+                                volume=float(kline.get("v", 0)),
+                                close_time=kline.get("T", 0),
+                                quote_volume=float(kline.get("q", 0)),
+                                trades=int(kline.get("n", 0)),
+                                taker_buy_volume=float(kline.get("V", 0)),
+                                taker_buy_quote_volume=float(kline.get("Q", 0))
+                            )
                         
                 except json.JSONDecodeError:
                     pass
@@ -285,16 +323,17 @@ class DirectExchangeClient:
                     logger.debug(f"Binance futures parse error: {e}")
     
     async def _connect_binance_spot(self):
-        """Connect to Binance Spot WebSocket - ALL streams."""
+        """Connect to Binance Spot WebSocket - ALL streams including klines."""
         # Build comprehensive stream list
         streams = []
         for sym in self.SUPPORTED_SYMBOLS:
             s = sym.lower()
             streams.extend([
                 f"{s}@bookTicker",      # Best bid/ask
-                f"{s}@depth10@100ms",   # Top 10 orderbook
+                f"{s}@depth20@100ms",   # Top 20 orderbook (increased from 10)
                 f"{s}@aggTrade",        # Aggregated trades
                 f"{s}@ticker",          # 24hr ticker stats
+                f"{s}@kline_1m",        # 1-minute candlesticks (NEW)
             ])
         
         url = f"wss://stream.binance.com:9443/stream?streams={'/'.join(streams)}"
@@ -351,6 +390,25 @@ class DirectExchangeClient:
                             price_change_pct=float(payload.get("P", 0)),
                             trades_count=int(payload.get("n", 0))
                         )
+                    
+                    elif event_type == "kline":
+                        # 1-minute candlestick (NEW)
+                        kline = payload.get("k", {})
+                        if kline.get("x", False):  # Only process closed candles
+                            await self._update_candle(
+                                symbol, "binance_spot",
+                                open_time=kline.get("t", 0),
+                                open_price=float(kline.get("o", 0)),
+                                high_price=float(kline.get("h", 0)),
+                                low_price=float(kline.get("l", 0)),
+                                close_price=float(kline.get("c", 0)),
+                                volume=float(kline.get("v", 0)),
+                                close_time=kline.get("T", 0),
+                                quote_volume=float(kline.get("q", 0)),
+                                trades=int(kline.get("n", 0)),
+                                taker_buy_volume=float(kline.get("V", 0)),
+                                taker_buy_quote_volume=float(kline.get("Q", 0))
+                            )
                         
                 except json.JSONDecodeError:
                     pass
@@ -358,7 +416,7 @@ class DirectExchangeClient:
                     logger.debug(f"Binance spot parse error: {e}")
     
     async def _connect_bybit_futures(self):
-        """Connect to Bybit Futures WebSocket - ALL streams."""
+        """Connect to Bybit Futures WebSocket - ALL streams including klines."""
         url = "wss://stream.bybit.com/v5/public/linear"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
@@ -366,10 +424,11 @@ class DirectExchangeClient:
             args = []
             for sym in self.SUPPORTED_SYMBOLS:
                 args.extend([
-                    f"tickers.{sym}",           # Ticker with bid/ask/volume
-                    f"orderbook.25.{sym}",      # Top 25 orderbook levels
+                    f"tickers.{sym}",           # Ticker with bid/ask/volume/OI/funding
+                    f"orderbook.50.{sym}",      # Top 50 orderbook levels (increased from 25)
                     f"publicTrade.{sym}",       # Public trades
                     f"liquidation.{sym}",       # Liquidations
+                    f"kline.1.{sym}",           # 1-minute candlesticks (NEW)
                 ])
             
             subscribe_msg = {"op": "subscribe", "args": args}
@@ -455,6 +514,26 @@ class DirectExchangeClient:
                             quantity=float(payload.get("size", 0)),
                             timestamp=int(payload.get("updatedTime", time.time() * 1000))
                         )
+                    
+                    elif topic.startswith("kline."):
+                        # 1-minute candlestick (NEW)
+                        candles = payload if isinstance(payload, list) else [payload]
+                        for candle in candles:
+                            if candle.get("confirm", False):  # Only process confirmed/closed candles
+                                await self._update_candle(
+                                    symbol, "bybit_futures",
+                                    open_time=int(candle.get("start", 0)),
+                                    open_price=float(candle.get("open", 0)),
+                                    high_price=float(candle.get("high", 0)),
+                                    low_price=float(candle.get("low", 0)),
+                                    close_price=float(candle.get("close", 0)),
+                                    volume=float(candle.get("volume", 0)),
+                                    close_time=int(candle.get("end", 0)),
+                                    quote_volume=float(candle.get("turnover", 0)),
+                                    trades=0,  # Not provided by Bybit
+                                    taker_buy_volume=0,
+                                    taker_buy_quote_volume=0
+                                )
                         
                 except json.JSONDecodeError:
                     pass
@@ -484,6 +563,7 @@ class DirectExchangeClient:
                     {"channel": "mark-price", "instId": inst},        # Mark price
                     {"channel": "funding-rate", "instId": inst},      # Funding rate
                     {"channel": "open-interest", "instId": inst},     # Open interest
+                    {"channel": "candle1m", "instId": inst},          # 1-minute candles (NEW)
                     {"channel": "liquidation-orders", "instType": "SWAP"},  # Liquidations
                 ])
             
@@ -573,6 +653,27 @@ class DirectExchangeClient:
                                     quantity=float(item.get("sz", 0)),
                                     timestamp=int(item.get("ts", time.time() * 1000))
                                 )
+                        
+                        elif channel == "candle1m":
+                            # OKX candle format: [ts, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
+                            # item is a list: [1597026383085, "8533.02", "8553.74", "8527.17", "8548.26", "45247", ...]
+                            if isinstance(item, list) and len(item) >= 6:
+                                is_confirmed = item[8] == "1" if len(item) > 8 else True
+                                if is_confirmed:
+                                    await self._update_candle(
+                                        symbol, "okx_futures",
+                                        open_time=int(item[0]),
+                                        open_price=float(item[1]),
+                                        high_price=float(item[2]),
+                                        low_price=float(item[3]),
+                                        close_price=float(item[4]),
+                                        volume=float(item[5]),
+                                        close_time=int(item[0]) + 60000,  # 1 min later
+                                        quote_volume=float(item[7]) if len(item) > 7 else 0,
+                                        trades=0,
+                                        taker_buy_volume=0,
+                                        taker_buy_quote_volume=0
+                                    )
                                 
                 except json.JSONDecodeError:
                     pass
@@ -591,6 +692,7 @@ class DirectExchangeClient:
                     f"tickers.{sym}",           # Ticker with bid/ask/volume
                     f"orderbook.50.{sym}",      # Top 50 orderbook levels
                     f"publicTrade.{sym}",       # Public trades
+                    f"kline.1.{sym}",           # 1-minute candles (NEW)
                 ])
             
             subscribe_msg = {"op": "subscribe", "args": args}
@@ -649,6 +751,26 @@ class DirectExchangeClient:
                                 is_buyer_maker=trade.get("S", "") == "Sell",
                                 timestamp=int(trade.get("T", time.time() * 1000))
                             )
+                    
+                    elif topic.startswith("kline."):
+                        # 1-minute candlestick (NEW)
+                        candles = payload if isinstance(payload, list) else [payload]
+                        for candle in candles:
+                            if candle.get("confirm", False):  # Only process confirmed/closed candles
+                                await self._update_candle(
+                                    symbol, "bybit_spot",
+                                    open_time=int(candle.get("start", 0)),
+                                    open_price=float(candle.get("open", 0)),
+                                    high_price=float(candle.get("high", 0)),
+                                    low_price=float(candle.get("low", 0)),
+                                    close_price=float(candle.get("close", 0)),
+                                    volume=float(candle.get("volume", 0)),
+                                    close_time=int(candle.get("end", 0)),
+                                    quote_volume=float(candle.get("turnover", 0)),
+                                    trades=0,
+                                    taker_buy_volume=0,
+                                    taker_buy_quote_volume=0
+                                )
                             
                 except json.JSONDecodeError:
                     pass
@@ -793,6 +915,7 @@ class DirectExchangeClient:
                 ("futures.order_book", contracts),       # Orderbook
                 ("futures.trades", contracts),           # Trades
                 ("futures.liquidates", contracts),       # Liquidations
+                ("futures.candlesticks", contracts),     # 1-minute candles (NEW)
             ]
             
             for channel, payload in channels:
@@ -800,7 +923,7 @@ class DirectExchangeClient:
                     "time": int(time.time()),
                     "channel": channel,
                     "event": "subscribe",
-                    "payload": payload
+                    "payload": payload if channel != "futures.candlesticks" else [f"{c}_1m" for c in payload]
                 }
                 await ws.send(json.dumps(subscribe_msg))
             
@@ -886,6 +1009,30 @@ class DirectExchangeClient:
                                     price=float(liq.get("price", 0)),
                                     quantity=float(liq.get("size", 0)),
                                     timestamp=int(liq.get("time", time.time()) * 1000)
+                                )
+                    
+                    elif channel == "futures.candlesticks":
+                        # Gate.io candle format: {n: name_interval, t: timestamp, o, h, l, c, v, ...}
+                        candles = result if isinstance(result, list) else [result]
+                        for candle in candles:
+                            # Parse contract from name (e.g., "BTC_USDT_1m" -> "BTC_USDT")
+                            name = candle.get("n", "")
+                            contract = name.rsplit("_", 1)[0] if "_1m" in name else name
+                            symbol = reverse_symbols.get(contract)
+                            if symbol:
+                                await self._update_candle(
+                                    symbol, "gate_futures",
+                                    open_time=int(candle.get("t", 0)) * 1000,
+                                    open_price=float(candle.get("o", 0)),
+                                    high_price=float(candle.get("h", 0)),
+                                    low_price=float(candle.get("l", 0)),
+                                    close_price=float(candle.get("c", 0)),
+                                    volume=float(candle.get("v", 0)),
+                                    close_time=(int(candle.get("t", 0)) + 60) * 1000,
+                                    quote_volume=float(candle.get("sum", 0)),
+                                    trades=0,
+                                    taker_buy_volume=0,
+                                    taker_buy_quote_volume=0
                                 )
                                 
                 except json.JSONDecodeError:
@@ -1204,6 +1351,58 @@ class DirectExchangeClient:
                 "exchange": exchange
             }
     
+    async def _update_candle(self, symbol: str, exchange: str,
+                             open_time: int, open_price: float, high_price: float,
+                             low_price: float, close_price: float, volume: float,
+                             close_time: int, quote_volume: float, trades: int,
+                             taker_buy_volume: float, taker_buy_quote_volume: float):
+        """Update OHLCV candle data."""
+        async with self._lock:
+            if symbol not in self.candles:
+                self.candles[symbol] = {}
+            if exchange not in self.candles[symbol]:
+                self.candles[symbol][exchange] = []
+            
+            candle = {
+                "open_time": open_time,
+                "open": open_price,
+                "high": high_price,
+                "low": low_price,
+                "close": close_price,
+                "volume": volume,
+                "close_time": close_time,
+                "quote_volume": quote_volume,
+                "trades": trades,
+                "taker_buy_volume": taker_buy_volume,
+                "taker_buy_quote_volume": taker_buy_quote_volume,
+                "exchange": exchange,
+                "timestamp": int(time.time() * 1000)
+            }
+            
+            # Avoid duplicates based on open_time
+            existing_times = {c["open_time"] for c in self.candles[symbol][exchange]}
+            if open_time not in existing_times:
+                self.candles[symbol][exchange].append(candle)
+                # Keep only last N candles (sorted by open_time)
+                self.candles[symbol][exchange] = sorted(
+                    self.candles[symbol][exchange], 
+                    key=lambda x: x["open_time"]
+                )[-self.max_candles:]
+    
+    async def _update_index_price(self, symbol: str, exchange: str, index_price: float):
+        """Update index price data."""
+        timestamp = int(time.time() * 1000)
+        
+        async with self._lock:
+            if symbol not in self.index_prices:
+                self.index_prices[symbol] = {}
+            
+            self.index_prices[symbol][exchange] = {
+                "index_price": index_price,
+                "exchange": exchange,
+                "timestamp": timestamp
+            }
+    
     async def _check_arbitrage(self, symbol: str):
         """Check for arbitrage opportunities after price update."""
         async with self._lock:
@@ -1518,6 +1717,55 @@ class DirectExchangeClient:
             if symbol:
                 return {symbol: dict(self.ticker_24h.get(symbol, {}))}
             return {sym: dict(data) for sym, data in self.ticker_24h.items() if data}
+    
+    async def get_candles(self, symbol: Optional[str] = None, exchange: Optional[str] = None, limit: int = 60) -> Dict:
+        """
+        Get OHLCV candle data from all or specific exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            exchange: Specific exchange or None for all
+            limit: Max candles per exchange (default 60 = last hour of 1m candles)
+            
+        Returns:
+            Dict with candle data including OHLCV, volume, and timestamp
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            result = {}
+            symbols = [symbol] if symbol else self.SUPPORTED_SYMBOLS
+            
+            for sym in symbols:
+                sym_data = self.candles.get(sym, {})
+                if sym_data:
+                    result[sym] = {}
+                    for ex, candles in sym_data.items():
+                        if exchange and ex != exchange:
+                            continue
+                        # Return last N candles (already sorted by open_time)
+                        result[sym][ex] = candles[-limit:] if len(candles) > limit else candles
+            
+            return result
+    
+    async def get_index_prices(self, symbol: Optional[str] = None) -> Dict:
+        """
+        Get index prices from all exchanges.
+        
+        Args:
+            symbol: Specific symbol or None for all
+            
+        Returns:
+            Dict with index_price and timestamp per exchange
+        """
+        if not self._started:
+            await self.start()
+        
+        async with self._lock:
+            if symbol:
+                return {symbol: dict(self.index_prices.get(symbol, {}))}
+            return {sym: dict(data) for sym, data in self.index_prices.items() if data}
     
     async def get_market_summary(self, symbol: str) -> Dict:
         """

@@ -1,4 +1,4 @@
-"""Crypto arbitrage analysis tools"""
+"""Crypto arbitrage and exchange analysis tools"""
 
 from .crypto_arbitrage_tool import (
     analyze_crypto_arbitrage,
@@ -8,10 +8,447 @@ from .crypto_arbitrage_tool import (
     arbitrage_scanner_health
 )
 
+from .binance_futures_tools import (
+    # Market Data
+    binance_get_ticker,
+    binance_get_prices,
+    binance_get_orderbook,
+    binance_get_trades,
+    binance_get_klines,
+    # Derivatives Data
+    binance_get_open_interest,
+    binance_get_open_interest_history,
+    binance_get_funding_rate,
+    binance_get_premium_index,
+    # Positioning Data
+    binance_get_long_short_ratio,
+    binance_get_taker_volume,
+    # Basis Data
+    binance_get_basis,
+    # Liquidations
+    binance_get_liquidations,
+    # Comprehensive
+    binance_market_snapshot,
+    binance_full_analysis,
+)
+
+from .bybit_tools import (
+    # Spot Market Tools
+    bybit_spot_ticker,
+    bybit_spot_orderbook,
+    bybit_spot_trades,
+    bybit_spot_klines,
+    bybit_all_spot_tickers,
+    # Futures/Linear Tools
+    bybit_futures_ticker,
+    bybit_futures_orderbook,
+    bybit_open_interest,
+    bybit_funding_rate,
+    bybit_long_short_ratio,
+    bybit_historical_volatility,
+    bybit_insurance_fund,
+    bybit_all_perpetual_tickers,
+    # Analysis Tools
+    bybit_derivatives_analysis,
+    bybit_market_snapshot,
+    bybit_instruments_info,
+    bybit_options_overview,
+    bybit_risk_limit,
+    bybit_announcements,
+    bybit_full_market_analysis,
+)
+
+from .binance_spot_tools import (
+    # Market Data
+    binance_spot_ticker,
+    binance_spot_price,
+    binance_spot_orderbook,
+    binance_spot_trades,
+    binance_spot_klines,
+    binance_spot_avg_price,
+    binance_spot_book_ticker,
+    binance_spot_agg_trades,
+    binance_spot_exchange_info,
+    binance_spot_rolling_ticker,
+    binance_spot_all_tickers,
+    # Analysis
+    binance_spot_snapshot,
+    binance_spot_full_analysis,
+)
+
+from .okx_tools import (
+    # Ticker Tools
+    okx_ticker,
+    okx_all_tickers,
+    okx_index_ticker,
+    # Orderbook Tools
+    okx_orderbook,
+    # Trades Tools
+    okx_trades,
+    # Klines Tools
+    okx_klines,
+    # Funding Rate Tools
+    okx_funding_rate,
+    okx_funding_rate_history,
+    # Open Interest Tools
+    okx_open_interest,
+    okx_oi_volume,
+    # Long/Short & Taker Volume
+    okx_long_short_ratio,
+    okx_taker_volume,
+    # Instrument Info
+    okx_instruments,
+    okx_mark_price,
+    # Insurance & Platform
+    okx_insurance_fund,
+    okx_platform_volume,
+    # Options
+    okx_options_summary,
+    # Analysis
+    okx_market_snapshot,
+    okx_full_analysis,
+    okx_top_movers,
+)
+
+from .kraken_tools import (
+    # Spot Tools
+    kraken_spot_ticker,
+    kraken_all_spot_tickers,
+    kraken_spot_orderbook,
+    kraken_spot_trades,
+    kraken_spot_klines,
+    kraken_spread,
+    kraken_assets,
+    kraken_spot_pairs,
+    # Futures Tools
+    kraken_futures_ticker,
+    kraken_all_futures_tickers,
+    kraken_futures_orderbook,
+    kraken_futures_trades,
+    kraken_futures_klines,
+    kraken_futures_instruments,
+    # Funding & OI
+    kraken_funding_rates,
+    kraken_open_interest,
+    # System
+    kraken_system_status,
+    # Analysis
+    kraken_top_movers,
+    kraken_market_snapshot,
+    kraken_full_analysis,
+)
+
+from .gateio_tools import (
+    # Perpetual Futures Tools
+    gateio_futures_contracts_tool,
+    gateio_futures_contract_tool,
+    gateio_futures_ticker_tool,
+    gateio_all_futures_tickers_tool,
+    gateio_futures_orderbook_tool,
+    gateio_futures_trades_tool,
+    gateio_futures_klines_tool,
+    gateio_funding_rate_tool,
+    gateio_all_funding_rates_tool,
+    gateio_contract_stats_tool,
+    gateio_open_interest_tool,
+    gateio_liquidations_tool,
+    gateio_insurance_fund_tool,
+    gateio_risk_limit_tiers_tool,
+    # Delivery Futures Tools
+    gateio_delivery_contracts_tool,
+    gateio_delivery_ticker_tool,
+    # Options Tools
+    gateio_options_underlyings_tool,
+    gateio_options_expirations_tool,
+    gateio_options_contracts_tool,
+    gateio_options_tickers_tool,
+    gateio_options_underlying_ticker_tool,
+    gateio_options_orderbook_tool,
+    # Analysis Tools
+    gateio_market_snapshot_tool,
+    gateio_top_movers_tool,
+    gateio_full_analysis_tool,
+    gateio_perpetuals_tool,
+)
+
+from .hyperliquid_tools import (
+    # Market Data Tools
+    hyperliquid_meta_tool,
+    hyperliquid_all_mids_tool,
+    hyperliquid_ticker_tool,
+    hyperliquid_all_tickers_tool,
+    hyperliquid_orderbook_tool,
+    hyperliquid_klines_tool,
+    # Funding & OI Tools
+    hyperliquid_funding_rate_tool,
+    hyperliquid_all_funding_rates_tool,
+    hyperliquid_open_interest_tool,
+    hyperliquid_top_movers_tool,
+    hyperliquid_exchange_stats_tool,
+    # Spot Tools
+    hyperliquid_spot_meta_tool,
+    hyperliquid_spot_meta_and_ctxs_tool,
+    # Analysis Tools
+    hyperliquid_market_snapshot_tool,
+    hyperliquid_full_analysis_tool,
+    hyperliquid_perpetuals_tool,
+    hyperliquid_recent_trades_tool,
+)
+
+from .deribit_tools import (
+    # Instrument Tools
+    deribit_instruments_tool,
+    deribit_currencies_tool,
+    # Ticker Tools
+    deribit_ticker_tool,
+    deribit_perpetual_ticker_tool,
+    deribit_all_perpetual_tickers_tool,
+    deribit_futures_tickers_tool,
+    # Orderbook Tools
+    deribit_orderbook_tool,
+    # Trades Tools
+    deribit_trades_tool,
+    deribit_trades_by_currency_tool,
+    # Index & Price Tools
+    deribit_index_price_tool,
+    deribit_index_names_tool,
+    # Funding Rate Tools
+    deribit_funding_rate_tool,
+    deribit_funding_history_tool,
+    deribit_funding_analysis_tool,
+    # Volatility Tools
+    deribit_historical_volatility_tool,
+    deribit_dvol_tool,
+    # Klines Tools
+    deribit_klines_tool,
+    # Open Interest Tools
+    deribit_open_interest_tool,
+    # Options Tools
+    deribit_options_summary_tool,
+    deribit_options_chain_tool,
+    deribit_option_ticker_tool,
+    deribit_top_options_tool,
+    # Analysis Tools
+    deribit_market_snapshot_tool,
+    deribit_full_analysis_tool,
+    deribit_exchange_stats_tool,
+    # Book Summary Tools
+    deribit_book_summary_tool,
+    # Settlement Tools
+    deribit_settlements_tool,
+)
+
 __all__ = [
+    # Arbitrage tools
     "analyze_crypto_arbitrage",
     "get_exchange_prices",
     "get_spread_matrix",
     "get_recent_opportunities",
-    "arbitrage_scanner_health"
+    "arbitrage_scanner_health",
+    # Binance Futures - Market Data
+    "binance_get_ticker",
+    "binance_get_prices",
+    "binance_get_orderbook",
+    "binance_get_trades",
+    "binance_get_klines",
+    # Binance Futures - Derivatives
+    "binance_get_open_interest",
+    "binance_get_open_interest_history",
+    "binance_get_funding_rate",
+    "binance_get_premium_index",
+    # Binance Futures - Positioning
+    "binance_get_long_short_ratio",
+    "binance_get_taker_volume",
+    # Binance Futures - Basis
+    "binance_get_basis",
+    # Binance Futures - Liquidations
+    "binance_get_liquidations",
+    # Binance Futures - Comprehensive
+    "binance_market_snapshot",
+    "binance_full_analysis",
+    # Bybit Spot
+    "bybit_spot_ticker",
+    "bybit_spot_orderbook",
+    "bybit_spot_trades",
+    "bybit_spot_klines",
+    "bybit_all_spot_tickers",
+    # Bybit Futures
+    "bybit_futures_ticker",
+    "bybit_futures_orderbook",
+    "bybit_open_interest",
+    "bybit_funding_rate",
+    "bybit_long_short_ratio",
+    "bybit_historical_volatility",
+    "bybit_insurance_fund",
+    "bybit_all_perpetual_tickers",
+    # Bybit Analysis
+    "bybit_derivatives_analysis",
+    "bybit_market_snapshot",
+    "bybit_instruments_info",
+    "bybit_options_overview",
+    "bybit_risk_limit",
+    "bybit_announcements",
+    "bybit_full_market_analysis",
+    # Binance Spot - Market Data
+    "binance_spot_ticker",
+    "binance_spot_price",
+    "binance_spot_orderbook",
+    "binance_spot_trades",
+    "binance_spot_klines",
+    "binance_spot_avg_price",
+    "binance_spot_book_ticker",
+    "binance_spot_agg_trades",
+    "binance_spot_exchange_info",
+    "binance_spot_rolling_ticker",
+    "binance_spot_all_tickers",
+    # Binance Spot - Analysis
+    "binance_spot_snapshot",
+    "binance_spot_full_analysis",
+    # OKX - Ticker Tools
+    "okx_ticker",
+    "okx_all_tickers",
+    "okx_index_ticker",
+    # OKX - Orderbook
+    "okx_orderbook",
+    # OKX - Trades
+    "okx_trades",
+    # OKX - Klines
+    "okx_klines",
+    # OKX - Funding Rate
+    "okx_funding_rate",
+    "okx_funding_rate_history",
+    # OKX - Open Interest
+    "okx_open_interest",
+    "okx_oi_volume",
+    # OKX - Long/Short & Taker
+    "okx_long_short_ratio",
+    "okx_taker_volume",
+    # OKX - Instruments
+    "okx_instruments",
+    "okx_mark_price",
+    # OKX - Insurance & Platform
+    "okx_insurance_fund",
+    "okx_platform_volume",
+    # OKX - Options
+    "okx_options_summary",
+    # OKX - Analysis
+    "okx_market_snapshot",
+    "okx_full_analysis",
+    "okx_top_movers",
+    # Kraken - Spot
+    "kraken_spot_ticker",
+    "kraken_all_spot_tickers",
+    "kraken_spot_orderbook",
+    "kraken_spot_trades",
+    "kraken_spot_klines",
+    "kraken_spread",
+    "kraken_assets",
+    "kraken_spot_pairs",
+    # Kraken - Futures
+    "kraken_futures_ticker",
+    "kraken_all_futures_tickers",
+    "kraken_futures_orderbook",
+    "kraken_futures_trades",
+    "kraken_futures_klines",
+    "kraken_futures_instruments",
+    # Kraken - Funding & OI
+    "kraken_funding_rates",
+    "kraken_open_interest",
+    # Kraken - System
+    "kraken_system_status",
+    # Kraken - Analysis
+    "kraken_top_movers",
+    "kraken_market_snapshot",
+    "kraken_full_analysis",
+    # Gate.io - Perpetual Futures
+    "gateio_futures_contracts_tool",
+    "gateio_futures_contract_tool",
+    "gateio_futures_ticker_tool",
+    "gateio_all_futures_tickers_tool",
+    "gateio_futures_orderbook_tool",
+    "gateio_futures_trades_tool",
+    "gateio_futures_klines_tool",
+    "gateio_funding_rate_tool",
+    "gateio_all_funding_rates_tool",
+    "gateio_contract_stats_tool",
+    "gateio_open_interest_tool",
+    "gateio_liquidations_tool",
+    "gateio_insurance_fund_tool",
+    "gateio_risk_limit_tiers_tool",
+    # Gate.io - Delivery Futures
+    "gateio_delivery_contracts_tool",
+    "gateio_delivery_ticker_tool",
+    # Gate.io - Options
+    "gateio_options_underlyings_tool",
+    "gateio_options_expirations_tool",
+    "gateio_options_contracts_tool",
+    "gateio_options_tickers_tool",
+    "gateio_options_underlying_ticker_tool",
+    "gateio_options_orderbook_tool",
+    # Gate.io - Analysis
+    "gateio_market_snapshot_tool",
+    "gateio_top_movers_tool",
+    "gateio_full_analysis_tool",
+    "gateio_perpetuals_tool",
+    # Hyperliquid - Market Data
+    "hyperliquid_meta_tool",
+    "hyperliquid_all_mids_tool",
+    "hyperliquid_ticker_tool",
+    "hyperliquid_all_tickers_tool",
+    "hyperliquid_orderbook_tool",
+    "hyperliquid_klines_tool",
+    # Hyperliquid - Funding & OI
+    "hyperliquid_funding_rate_tool",
+    "hyperliquid_all_funding_rates_tool",
+    "hyperliquid_open_interest_tool",
+    "hyperliquid_top_movers_tool",
+    "hyperliquid_exchange_stats_tool",
+    # Hyperliquid - Spot
+    "hyperliquid_spot_meta_tool",
+    "hyperliquid_spot_meta_and_ctxs_tool",
+    # Hyperliquid - Analysis
+    "hyperliquid_market_snapshot_tool",
+    "hyperliquid_full_analysis_tool",
+    "hyperliquid_perpetuals_tool",
+    "hyperliquid_recent_trades_tool",
+    # Deribit - Instruments
+    "deribit_instruments_tool",
+    "deribit_currencies_tool",
+    # Deribit - Tickers
+    "deribit_ticker_tool",
+    "deribit_perpetual_ticker_tool",
+    "deribit_all_perpetual_tickers_tool",
+    "deribit_futures_tickers_tool",
+    # Deribit - Orderbook
+    "deribit_orderbook_tool",
+    # Deribit - Trades
+    "deribit_trades_tool",
+    "deribit_trades_by_currency_tool",
+    # Deribit - Index & Price
+    "deribit_index_price_tool",
+    "deribit_index_names_tool",
+    # Deribit - Funding
+    "deribit_funding_rate_tool",
+    "deribit_funding_history_tool",
+    "deribit_funding_analysis_tool",
+    # Deribit - Volatility
+    "deribit_historical_volatility_tool",
+    "deribit_dvol_tool",
+    # Deribit - Klines
+    "deribit_klines_tool",
+    # Deribit - Open Interest
+    "deribit_open_interest_tool",
+    # Deribit - Options
+    "deribit_options_summary_tool",
+    "deribit_options_chain_tool",
+    "deribit_option_ticker_tool",
+    "deribit_top_options_tool",
+    # Deribit - Analysis
+    "deribit_market_snapshot_tool",
+    "deribit_full_analysis_tool",
+    "deribit_exchange_stats_tool",
+    # Deribit - Book Summary
+    "deribit_book_summary_tool",
+    # Deribit - Settlements
+    "deribit_settlements_tool",
 ]

@@ -21,7 +21,7 @@ A high-performance Model Context Protocol (MCP) server for **real-time cryptocur
 ## 🏛️ Supported Exchanges
 
 | Mode | Exchanges |
-|------|-----------|
+| ---- | --------- |
 | **Direct Exchange** | Binance Futures, Binance Spot, Bybit Futures, OKX Futures |
 | **Go Backend** | Binance, Bybit, OKX, Kraken, Gate.io, Hyperliquid, Paradex, Pyth |
 
@@ -36,7 +36,7 @@ A high-performance Model Context Protocol (MCP) server for **real-time cryptocur
 
 ### Direct Exchange Mode (Default - Cloud Deployment)
 
-```
+```text
 ┌─────────────────────┐    WebSocket    ┌─────────────────────┐
 │ MCP Crypto Server   │ ──────────────► │ Exchanges           │
 │ (Python)            │                 │                     │
@@ -49,7 +49,7 @@ A high-performance Model Context Protocol (MCP) server for **real-time cryptocur
 
 ### Go Backend Mode (Local Development)
 
-```
+```text
 ┌─────────────────────┐    WebSocket    ┌─────────────────────┐    WebSocket    ┌─────────────────────┐
 │ MCP Crypto Server   │ ──────────────► │ crypto-futures-     │ ──────────────► │ 10+ Exchanges       │
 │ (Python)            │   ws://8082     │ arbitrage-scanner   │                 │                     │
@@ -92,21 +92,23 @@ USE_DIRECT_EXCHANGES=false python run_server.py
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_DIRECT_EXCHANGES` | `true` | Use direct exchange connections (no Go backend needed) |
-| `ARBITRAGE_SCANNER_HOST` | `localhost` | Go scanner host (only for Go backend mode) |
-| `ARBITRAGE_SCANNER_PORT` | `8082` | Go scanner port (only for Go backend mode) |
-| `LOG_LEVEL` | `INFO` | Logging verbosity |
+| Variable                   | Default     | Description                                              |
+| -------------------------- | ----------- | -------------------------------------------------------- |
+| `USE_DIRECT_EXCHANGES`     | `true`      | Use direct exchange connections (no Go backend needed)   |
+| `ARBITRAGE_SCANNER_HOST`   | `localhost` | Go scanner host (only for Go backend mode)               |
+| `ARBITRAGE_SCANNER_PORT`   | `8082`      | Go scanner port (only for Go backend mode)               |
+| `LOG_LEVEL`                | `INFO`      | Logging verbosity                                        |
 
 ## 🚀 FastMCP Cloud Deployment
 
 This server is ready for deployment on FastMCP Cloud!
 
 ### 1. Connect Repository
+
 Go to [fastmcp.cloud](https://fastmcp.cloud) and select your repository.
 
 ### 2. Deploy
+
 Click deploy - no additional configuration needed! The server uses direct exchange mode by default.
 
 ### 3. Claude Desktop Config
@@ -208,53 +210,59 @@ Check health and connectivity of the arbitrage scanner.
 ## 💡 Example Conversations
 
 ### Arbitrage Analysis
-```
+
+```text
 User: "Analyze the current crypto arbitrage situation for Bitcoin"
 
 AI: Uses analyze_crypto_arbitrage_tool(symbol="BTCUSDT") and returns:
+```
+
 - Current prices from all 10 exchanges
 - Best arbitrage opportunity (e.g., Buy on Kraken at $67,234, Sell on Hyperliquid at $67,289 = 0.082% profit)
 - Full spread matrix between exchanges
 - Market efficiency assessment
-```
 
 ### Price Comparison
-```
+
+```text
 User: "Compare ETH prices on Binance and OKX"
 
 AI: Uses compare_exchange_prices("ETHUSDT", "binance_futures", "okx_futures") and returns:
-- Binance price: $3,456.78
-- OKX price: $3,459.23  
-- Spread: 0.071%
-- Recommendation: Buy on Binance, Sell on OKX
 ```
 
+- Binance price: $3,456.78
+- OKX price: $3,459.23
+- Spread: 0.071%
+- Recommendation: Buy on Binance, Sell on OKX
+
 ### Opportunity Monitoring
-```
+
+```text
 User: "What are the best arbitrage opportunities right now?"
 
 AI: Uses get_arbitrage_opportunities(min_profit=0.05, limit=10) and returns:
+```
+
 - List of profitable cross-exchange opportunities
 - Sorted by profit percentage
 - Buy/sell exchange recommendations
-```
 
 ## 📁 Project Structure
 
-```
+```text
 mcp-crypto-arbitrage-server/
 ├── src/
-│   ├── __init__.py                    # Package initialization
+│   ├── init.py                        # Package initialization
 │   ├── mcp_server.py                  # Main MCP server with tool definitions
 │   ├── storage/
-│   │   ├── __init__.py
+│   │   ├── init.py
 │   │   ├── direct_exchange_client.py  # Direct exchange connections (default)
 │   │   └── websocket_client.py        # WebSocket client for Go scanner
 │   ├── formatters/
-│   │   ├── __init__.py
+│   │   ├── init.py
 │   │   └── crypto_xml_formatter.py    # XML output formatting
 │   └── tools/
-│       ├── __init__.py
+│       ├── init.py
 │       └── crypto_arbitrage_tool.py   # Tool implementations
 ├── run_server.py                      # Entry point
 ├── test_crypto_tools.py               # Test script
@@ -268,6 +276,7 @@ mcp-crypto-arbitrage-server/
 ### Direct Exchange Mode Issues
 
 **No price data showing:**
+
 - Wait 3-5 seconds for exchange connections to establish
 - Check network connectivity to exchanges
 - Some corporate networks block WebSocket connections
@@ -275,10 +284,12 @@ mcp-crypto-arbitrage-server/
 ### Go Backend Mode Issues
 
 **"Connection refused" or "Scanner not connected":**
+
 - Ensure the Go scanner is running: `cd crypto-futures-arbitrage-scanner && go run main.go`
 - Check the scanner is accessible on `ws://localhost:8082/ws`
 
 **Missing exchange data:**
+
 - Some exchanges may rate-limit or block connections
 - Check Go scanner logs for specific exchange errors
 
