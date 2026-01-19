@@ -94,8 +94,8 @@ async def test_exchanges():
             print(f'  24H TICKER ({len(tickers)} exchanges):')
             for ex, data in tickers.items():
                 vol = data.get('volume', 0)
-                high = data.get('high', 0)
-                low = data.get('low', 0)
+                high = data.get('high_24h', 0)
+                low = data.get('low_24h', 0)
                 change = data.get('price_change_pct', 0)
                 print(f'    {ex}: vol={vol:,.2f}, high=${high:,.2f}, low=${low:,.2f}, chg={change:.2f}%')
         

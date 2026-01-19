@@ -562,13 +562,16 @@ class DirectExchangeClient:
                         if oi > 0:
                             await self._update_open_interest(symbol, "bybit_futures", oi, oi_value)
                         
-                        # 24h stats
+                        # 24h stats - only update from snapshots that have all fields
+                        # Bybit deltas may have volume but no high/low, which would overwrite good data
                         volume = float(payload.get("volume24h", 0) or 0)
                         turnover = float(payload.get("turnover24h", 0) or 0)
                         high = float(payload.get("highPrice24h", 0) or 0)
                         low = float(payload.get("lowPrice24h", 0) or 0)
                         change_pct = float(payload.get("price24hPcnt", 0) or 0) * 100
-                        await self._update_ticker_24h(symbol, "bybit_futures", volume, turnover, high, low, change_pct, 0)
+                        # Only update if we have complete 24h stats (high AND low present)
+                        if high > 0 and low > 0:
+                            await self._update_ticker_24h(symbol, "bybit_futures", volume, turnover, high, low, change_pct, 0)
                     
                     elif topic.startswith("orderbook."):
                         # Orderbook
@@ -993,13 +996,14 @@ class DirectExchangeClient:
                         if index > 0:
                             await self._update_index_price(symbol, "kraken_futures", index)
                         
-                        # 24h stats
-                        vol = float(data.get("vol24h", 0) or 0)
-                        open_price = float(data.get("open24h", 0) or 0)
-                        high = float(data.get("high24h", 0) or 0)
-                        low = float(data.get("low24h", 0) or 0)
-                        change_pct = ((last - open_price) / open_price * 100) if open_price > 0 else 0
-                        await self._update_ticker_24h(symbol, "kraken_futures", vol, 0, high, low, change_pct, 0)
+                        # 24h stats - Kraken uses 'volume', 'high', 'low', 'open' (not with 24h suffix)
+                        vol = float(data.get("volume", 0) or 0)
+                        open_price = float(data.get("open", 0) or 0)
+                        high = float(data.get("high", 0) or 0)
+                        low = float(data.get("low", 0) or 0)
+                        change_pct = float(data.get("change", 0) or 0) * 100  # Kraken provides 'change' field
+                        if vol > 0 or high > 0:
+                            await self._update_ticker_24h(symbol, "kraken_futures", vol, 0, high, low, change_pct, 0)
                         
                         # Open interest from ticker
                         oi = float(data.get("openInterest", 0) or 0)
@@ -1731,8 +1735,20 @@ class DirectExchangeClient:
     
     async def _update_open_interest(self, symbol: str, exchange: str, 
                                     open_interest: float, open_interest_value: float):
-        """Update open interest data."""
+        """Update open interest data. Calculates USD value if not provided."""
         timestamp = int(time.time() * 1000)
+        
+        # If OI value not provided, calculate from mark price
+        if open_interest_value == 0 and open_interest > 0:
+            # Try to get mark price for this symbol/exchange, or use any available price
+            mark_data = self.mark_prices.get(symbol, {}).get(exchange, {})
+            mark = mark_data.get("mark_price", 0)
+            if mark == 0:
+                # Fall back to regular price
+                price_data = self.prices.get(symbol, {}).get(exchange, {})
+                mark = price_data.get("price", 0)
+            if mark > 0:
+                open_interest_value = open_interest * mark
         
         async with self._lock:
             self.open_interest[symbol][exchange] = {
