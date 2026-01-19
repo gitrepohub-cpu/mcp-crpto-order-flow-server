@@ -37,7 +37,19 @@ async def get_options_flow(ticker: str, history_minutes: int = 20) -> str:
     Returns:
         XML-formatted options flow analysis
     """
+    grpc_client = None
     try:
+        # BUG FIX: Validate ticker input
+        if not ticker or not isinstance(ticker, str):
+            return build_error_response("UNKNOWN", "Invalid ticker - must be a non-empty string")
+        
+        ticker = ticker.upper().strip()  # BUG FIX: Normalize ticker
+        
+        # BUG FIX: Validate history_minutes
+        if not isinstance(history_minutes, int) or history_minutes < 1:
+            history_minutes = 20
+        history_minutes = min(history_minutes, 120)  # BUG FIX: Cap at 2 hours
+        
         # Get gRPC client
         grpc_client = OptionsOrderFlowGRPCClient()
         
@@ -56,15 +68,29 @@ async def get_options_flow(ticker: str, history_minutes: int = 20) -> str:
                 timeout=30.0  # 30 second timeout
             )
         except asyncio.TimeoutError:
+            logger.error(f"Timeout getting options flow for {ticker}")
             return build_error_response(ticker, "Request timeout - data broker not responding")
+        except ConnectionError as e:
+            logger.error(f"Connection error for {ticker}: {e}")
+            return build_error_response(ticker, f"Connection error: {str(e)}")
         except Exception as e:
+            logger.error(f"Unexpected error getting snapshot for {ticker}: {e}")
             return build_error_response(ticker, f"Connection error: {str(e)}")
         
         if not snapshot:
             return build_error_response(ticker, "Failed to get data from options order flow broker")
         
-        if snapshot.get('status') == 'error':
+        # BUG FIX: Check for both 'error' status and 'success' status
+        status = snapshot.get('status', '').lower()
+        if status == 'error':
             return build_error_response(ticker, snapshot.get('message', 'Unknown error from data broker'))
+        
+        # BUG FIX: Verify we have actual data
+        contracts = snapshot.get('contracts', [])
+        patterns = snapshot.get('patterns', [])
+        if not contracts and not patterns:
+            logger.warning(f"No contracts or patterns found for {ticker}")
+            # Still proceed - might be valid empty result
         
         # Create context builder (updated to use gRPC data)
         context_builder = OptionsContextBuilder(grpc_client)
@@ -72,18 +98,27 @@ async def get_options_flow(ticker: str, history_minutes: int = 20) -> str:
         # Build comprehensive context from snapshot data
         context = await context_builder.build_comprehensive_response_from_snapshot(ticker, snapshot)
         
+        # BUG FIX: Validate context before formatting
+        if not context or 'error' in context:
+            error_msg = context.get('error', 'Failed to build context') if context else 'Failed to build context'
+            return build_error_response(ticker, error_msg)
+        
         # Format as MCP XML
         formatter = OptionsMCPFormatter()
         mcp_xml = formatter.format_comprehensive(context)
-        
-        # Close gRPC client
-        await grpc_client.close()
         
         return mcp_xml
         
     except Exception as e:
         logger.exception(f"Error getting options flow for {ticker}: {e}")
         return build_error_response(ticker, str(e))
+    finally:
+        # BUG FIX: Always close gRPC client to prevent connection leaks
+        if grpc_client:
+            try:
+                await grpc_client.close()
+            except Exception as close_error:
+                logger.warning(f"Error closing gRPC client: {close_error}")
 
 
 def build_error_response(ticker: str, error_message: str) -> str:

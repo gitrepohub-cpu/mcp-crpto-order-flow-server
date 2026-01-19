@@ -260,7 +260,7 @@ class OptionsOrderFlowGRPCClient:
                 contract_data = {
                     'ticker': contract.ticker,
                     'expiration': contract.expiration,
-                    'strike': contract.strike,
+                    'strike': float(contract.strike),  # BUG FIX: Ensure float type
                     'option_type': contract.option_type,
                     'symbol': contract.symbol,
                     'is_monitored': contract.is_monitored,
@@ -274,47 +274,57 @@ class OptionsOrderFlowGRPCClient:
                     agg = contract.latest_aggregation
                     contract_data['latest_aggregation'] = {
                         'timestamp': agg.timestamp.ToJsonString() if agg.HasField('timestamp') else '',
-                        'total_volume': agg.total_volume,
-                        'bid_volume': agg.bid_volume,
-                        'ask_volume': agg.ask_volume,
-                        'avg_bid': agg.avg_bid,
-                        'avg_ask': agg.avg_ask,
-                        'transaction_count': agg.transaction_count,
-                        'imbalance': agg.imbalance,
-                        'volume_weighted_price': agg.volume_weighted_price
+                        'total_volume': int(agg.total_volume),  # BUG FIX: Ensure int type
+                        'bid_volume': int(agg.bid_volume),
+                        'ask_volume': int(agg.ask_volume),
+                        'avg_bid': float(agg.avg_bid),  # BUG FIX: Ensure float type
+                        'avg_ask': float(agg.avg_ask),
+                        'transaction_count': int(agg.transaction_count),
+                        'imbalance': float(agg.imbalance),
+                        'volume_weighted_price': float(agg.volume_weighted_price)
                     }
                 
                 # Parse recent patterns
                 for pattern in contract.recent_patterns:
+                    confidence = float(pattern.confidence)
+                    # BUG FIX: Normalize confidence to 0-1 range if needed
+                    if confidence > 1.0:
+                        confidence = confidence / 100.0
+                    
                     pattern_data = {
                         'type': pattern.type,
                         'timestamp': pattern.timestamp.ToJsonString() if pattern.HasField('timestamp') else '',
-                        'confidence': pattern.confidence,
+                        'confidence': confidence,
                         'description': pattern.description,
                         'direction': pattern.direction,
-                        'total_volume': pattern.total_volume,
-                        'duration_seconds': pattern.duration_seconds,
-                        'metrics': dict(pattern.metrics) if pattern.metrics else {}
+                        'total_volume': float(pattern.total_volume),  # BUG FIX: Ensure float
+                        'duration_seconds': int(pattern.duration_seconds),
+                        'metrics': {k: float(v) for k, v in pattern.metrics.items()} if pattern.metrics else {}  # BUG FIX: Convert metrics
                     }
                     contract_data['recent_patterns'].append(pattern_data)
                 
                 result['contracts'].append(contract_data)
             
-            # Parse patterns
+            # Parse patterns (top level)
             for pattern in response.patterns:
+                confidence = float(pattern.confidence)
+                # BUG FIX: Normalize confidence
+                if confidence > 1.0:
+                    confidence = confidence / 100.0
+                    
                 pattern_data = {
                     'type': pattern.type,
                     'ticker': pattern.ticker,
                     'expiration': pattern.expiration,
-                    'strike': pattern.strike,
+                    'strike': float(pattern.strike),
                     'option_type': pattern.option_type,
                     'timestamp': pattern.timestamp.ToJsonString() if pattern.HasField('timestamp') else '',
-                    'confidence': pattern.confidence,
+                    'confidence': confidence,
                     'description': pattern.description,
                     'direction': pattern.direction,
-                    'total_volume': pattern.total_volume,
-                    'duration_seconds': pattern.duration_seconds,
-                    'metrics': dict(pattern.metrics) if pattern.metrics else {}
+                    'total_volume': float(pattern.total_volume),
+                    'duration_seconds': int(pattern.duration_seconds),
+                    'metrics': {k: float(v) for k, v in pattern.metrics.items()} if pattern.metrics else {}
                 }
                 result['patterns'].append(pattern_data)
             
@@ -322,15 +332,15 @@ class OptionsOrderFlowGRPCClient:
             if response.HasField('summary'):
                 summary = response.summary
                 result['summary'] = {
-                    'total_contracts_monitored': summary.total_contracts_monitored,
-                    'active_patterns': summary.active_patterns,
-                    'total_volume': summary.total_volume,
-                    'call_volume': summary.call_volume,
-                    'put_volume': summary.put_volume,
-                    'put_call_ratio': summary.put_call_ratio,
-                    'sweep_patterns': summary.sweep_patterns,
-                    'block_patterns': summary.block_patterns,
-                    'unusual_volume_patterns': summary.unusual_volume_patterns,
+                    'total_contracts_monitored': int(summary.total_contracts_monitored),
+                    'active_patterns': int(summary.active_patterns),
+                    'total_volume': int(summary.total_volume),  # BUG FIX: int64 preserved
+                    'call_volume': int(summary.call_volume),
+                    'put_volume': int(summary.put_volume),
+                    'put_call_ratio': float(summary.put_call_ratio),  # BUG FIX: Ensure float
+                    'sweep_patterns': int(summary.sweep_patterns),
+                    'block_patterns': int(summary.block_patterns),
+                    'unusual_volume_patterns': int(summary.unusual_volume_patterns),
                     'dominant_flow': summary.dominant_flow,
                     'hot_contracts': []
                 }
@@ -341,11 +351,11 @@ class OptionsOrderFlowGRPCClient:
                         'symbol': hot_contract.symbol,
                         'ticker': hot_contract.ticker,
                         'expiration': hot_contract.expiration,
-                        'strike': hot_contract.strike,
+                        'strike': float(hot_contract.strike),  # BUG FIX: Ensure float
                         'option_type': hot_contract.option_type,
-                        'volume': hot_contract.volume,
-                        'pattern_count': hot_contract.pattern_count,
-                        'activity_score': hot_contract.activity_score
+                        'volume': int(hot_contract.volume),  # BUG FIX: int64 preserved
+                        'pattern_count': int(hot_contract.pattern_count),
+                        'activity_score': float(hot_contract.activity_score)  # BUG FIX: Ensure float
                     }
                     result['summary']['hot_contracts'].append(hot_data)
             

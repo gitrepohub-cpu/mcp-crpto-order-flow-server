@@ -145,44 +145,74 @@ class OptionsMCPFormatter:
     def _format_pattern(self, pattern: Dict[str, Any]) -> str:
         """Format a single pattern"""
         pattern_type = pattern.get('type', 'UNKNOWN')
-        data = pattern.get('data', {})
+        data = pattern.get('data', {}) if pattern.get('data') else pattern  # BUG FIX: Use pattern itself if data is empty
         
         xml = f'            <pattern type="{pattern_type}">\n'
 
-        # Add timestamp
-        timestamp = data.get('start_time') or data.get('time') or pattern.get('timestamp', 0) or pattern.get('detected_at', 0)
-        if isinstance(timestamp, (int, float)) and timestamp > 1000000000000:  # Milliseconds
-            timestamp = datetime.fromtimestamp(timestamp / 1000).isoformat()
-        elif isinstance(timestamp, (int, float)):
-            timestamp = datetime.fromtimestamp(timestamp).isoformat()
+        # Add timestamp - BUG FIX: Check all possible timestamp sources with proper type handling
+        timestamp = (
+            data.get('start_time') or 
+            data.get('time') or 
+            pattern.get('timestamp') or  # gRPC returns timestamp directly
+            pattern.get('detected_at') or 
+            0
+        )
+        
+        # BUG FIX: Handle string timestamps from gRPC (ISO format)
+        if isinstance(timestamp, str) and timestamp:
+            # Already ISO format from gRPC
+            pass
+        elif isinstance(timestamp, (int, float)) and timestamp > 0:
+            # Handle epoch timestamps
+            if timestamp > 1000000000000:  # Milliseconds
+                timestamp = datetime.fromtimestamp(timestamp / 1000).isoformat()
+            elif timestamp > 1000000000:  # Seconds
+                timestamp = datetime.fromtimestamp(timestamp).isoformat()
+            else:
+                timestamp = datetime.now().isoformat()  # Invalid timestamp
+        else:
+            timestamp = datetime.now().isoformat()  # Default to now
         xml += f'              <timestamp>{timestamp}</timestamp>\n'
 
-        # Add direction
-        direction = data.get('direction', 'NEUTRAL')
+        # Add direction - BUG FIX: Check both data and pattern level
+        direction = data.get('direction') or pattern.get('direction', 'NEUTRAL')
         xml += f'              <direction>{direction}</direction>\n'
 
-        # Add volume
-        volume = data.get('volume', 0)
+        # Add volume - BUG FIX: Use total_volume from gRPC patterns
+        volume = data.get('volume') or pattern.get('total_volume', 0)
         xml += f'              <volume>{volume}</volume>\n'
 
-        # Add confidence
-        confidence = data.get('confidence', 0)
+        # Add confidence - BUG FIX: Check pattern level too
+        confidence = data.get('confidence') or pattern.get('confidence', 0)
         xml += f'              <confidence>{confidence:.2f}</confidence>\n'
 
-        # Add pattern-specific fields
+        # Add pattern-specific fields - BUG FIX: Also check gRPC metrics dict
+        metrics = pattern.get('metrics', {}) or {}
+        
         if pattern_type == 'SWEEP':
-            xml += f'              <duration>{data.get("duration", 0)}</duration>\n'
-            imbalance = data.get('imbalance', 0)
+            duration = data.get('duration') or pattern.get('duration_seconds', 0) or metrics.get('duration', 0)
+            xml += f'              <duration>{duration}</duration>\n'
+            imbalance = data.get('imbalance') or metrics.get('imbalance', 0)
             xml += f'              <imbalance>{imbalance:.2f}</imbalance>\n'
             
         elif pattern_type == 'BLOCK':
-            xml += f'              <avg_bid>${data.get("avg_bid", 0):.2f}</avg_bid>\n'
-            xml += f'              <avg_ask>${data.get("avg_ask", 0):.2f}</avg_ask>\n'
+            avg_bid = data.get('avg_bid') or metrics.get('avg_bid', 0)
+            avg_ask = data.get('avg_ask') or metrics.get('avg_ask', 0)
+            xml += f'              <avg_bid>${avg_bid:.2f}</avg_bid>\n'
+            xml += f'              <avg_ask>${avg_ask:.2f}</avg_ask>\n'
             
         elif pattern_type == 'UNUSUAL_VOLUME':
-            xml += f'              <volume_increase>{data.get("volume_increase", 0):.2f}x</volume_increase>\n'
-            xml += f'              <baseline_volume>{data.get("baseline_volume", 0)}</baseline_volume>\n'
-            xml += f'              <avg_volume>{data.get("avg_volume", 0)}</avg_volume>\n'
+            vol_increase = data.get('volume_increase') or metrics.get('volume_increase', 0)
+            baseline = data.get('baseline_volume') or metrics.get('baseline_volume', 0)
+            avg_vol = data.get('avg_volume') or metrics.get('avg_volume', 0)
+            xml += f'              <volume_increase>{vol_increase:.2f}x</volume_increase>\n'
+            xml += f'              <baseline_volume>{baseline}</baseline_volume>\n'
+            xml += f'              <avg_volume>{avg_vol}</avg_volume>\n'
+        
+        # BUG FIX: Add description if available
+        description = pattern.get('description', '')
+        if description:
+            xml += f'              <description>{self._escape_xml(description)}</description>\n'
 
         xml += '            </pattern>\n'
         return xml

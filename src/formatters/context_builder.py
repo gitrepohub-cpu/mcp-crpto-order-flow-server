@@ -92,13 +92,21 @@ class OptionsContextBuilder:
             # Create current state from aggregation and patterns
             current_state = self._create_summary_from_snapshot_data(recent_patterns, latest_agg)
             
-            # Build contract data
+            # BUG FIX: Add volume data to current_state from aggregation
+            if latest_agg:
+                current_state['total_volume'] = latest_agg.get('total_volume', 0)
+                current_state['bid_volume'] = latest_agg.get('bid_volume', 0)
+                current_state['ask_volume'] = latest_agg.get('ask_volume', 0)
+                current_state['imbalance'] = latest_agg.get('imbalance', 0)
+                current_state['vwap'] = latest_agg.get('volume_weighted_price', 0)
+            
+            # Build contract data - BUG FIX: Use safe format methods
             contract_data = {
                 'ticker': ticker,
                 'expiration': expiration,
-                'expiration_display': self.grpc_client.format_expiration(expiration),
+                'expiration_display': self._safe_format_expiration(expiration),
                 'strike': strike,
-                'strike_display': self.grpc_client.format_strike(strike),
+                'strike_display': self._safe_format_strike(strike),
                 'option_type': option_type,
                 'symbol': contract.get('symbol', ''),
                 'is_monitored': contract.get('is_monitored', False),
@@ -114,6 +122,33 @@ class OptionsContextBuilder:
         except Exception as e:
             self.logger.error(f"Error transforming contract from snapshot: {e}")
             return None
+    
+    def _safe_format_expiration(self, expiration: int) -> str:
+        """BUG FIX: Safe format expiration without relying on gRPC client"""
+        if not expiration:
+            return "Unknown"
+        try:
+            if self.grpc_client:
+                return self.grpc_client.format_expiration(expiration)
+        except Exception:
+            pass
+        # Fallback format
+        exp_str = str(expiration)
+        if len(exp_str) == 8:
+            return f"{exp_str[4:6]}/{exp_str[6:8]}/{exp_str[0:4]}"
+        return str(expiration)
+    
+    def _safe_format_strike(self, strike: float) -> str:
+        """BUG FIX: Safe format strike without relying on gRPC client"""
+        if not strike:
+            return "$0.00"
+        try:
+            if self.grpc_client:
+                return self.grpc_client.format_strike(strike)
+        except Exception:
+            pass
+        # Fallback format
+        return f"${strike:.2f}"
     
     def _create_summary_from_snapshot_data(self, patterns: List[Dict[str, Any]], aggregation: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """Create current state summary from snapshot data"""
@@ -155,28 +190,50 @@ class OptionsContextBuilder:
             else:
                 dominant_direction = 'NEUTRAL'
             
-            # Determine activity level based on patterns and volume
+            # BUG FIX: Determine activity level based on patterns and volume with better thresholds
             total_volume = 0
+            transaction_count = 0
             if aggregation:
                 total_volume = aggregation.get('total_volume', 0)
+                transaction_count = aggregation.get('transaction_count', 0)
             
             pattern_count = len(patterns)
-            if pattern_count >= 10 or total_volume > 10000:
+            
+            # BUG FIX: Use combined scoring for more precise activity detection
+            activity_score = pattern_count * 2 + (total_volume / 500) + (transaction_count / 10)
+            
+            if activity_score >= 20 or pattern_count >= 8 or total_volume > 8000:
                 activity_level = 'VERY_HIGH'
-            elif pattern_count >= 5 or total_volume > 5000:
+            elif activity_score >= 10 or pattern_count >= 4 or total_volume > 3000:
                 activity_level = 'HIGH'
-            elif pattern_count >= 2 or total_volume > 1000:
+            elif activity_score >= 3 or pattern_count >= 1 or total_volume > 500:
                 activity_level = 'MEDIUM'
             else:
                 activity_level = 'LOW'
             
-            # Determine significance
+            # BUG FIX: Determine significance with better pattern analysis
             significance = 'LOW'
+            high_confidence_count = 0
+            block_sweep_volume = 0
+            
             for pattern in patterns:
-                if pattern.get('type') in ['BLOCK', 'SWEEP'] and pattern.get('total_volume', 0) > 1000:
-                    significance = 'HIGH'
-                    break
-                elif pattern.get('confidence', 0) > 0.8:
+                pattern_type = pattern.get('type', '')
+                pattern_volume = pattern.get('total_volume', 0)
+                confidence = pattern.get('confidence', 0)
+                
+                if pattern_type in ['BLOCK', 'SWEEP']:
+                    block_sweep_volume += pattern_volume
+                    if pattern_volume > 500:  # BUG FIX: Lower threshold
+                        significance = 'HIGH'
+                
+                if confidence > 0.7:  # BUG FIX: Lower confidence threshold
+                    high_confidence_count += 1
+            
+            # BUG FIX: Also check aggregate metrics
+            if block_sweep_volume > 2000 or high_confidence_count >= 3:
+                significance = 'HIGH'
+            elif block_sweep_volume > 500 or high_confidence_count >= 1:
+                if significance != 'HIGH':
                     significance = 'MEDIUM'
             
             return {
@@ -185,7 +242,9 @@ class OptionsContextBuilder:
                 'significance': significance,
                 'recent_pattern_count': pattern_count,
                 'pattern_types': pattern_types,
-                'total_volume': total_volume
+                'total_volume': total_volume,
+                'transaction_count': transaction_count,  # BUG FIX: Include transaction count
+                'high_confidence_patterns': high_confidence_count  # BUG FIX: Track high confidence
             }
             
         except Exception as e:
@@ -206,25 +265,44 @@ class OptionsContextBuilder:
                 hot_contracts = summary.get('hot_contracts', [])
                 active_strikes = []
                 
+                # BUG FIX: Include more data from hot contracts
                 for hot in hot_contracts[:10]:  # Top 10
                     active_strikes.append({
                         'symbol': hot.get('symbol', ''),
+                        'strike': hot.get('strike', 0),
+                        'option_type': hot.get('option_type', ''),
                         'volume': hot.get('volume', 0),
                         'pattern_count': hot.get('pattern_count', 0),
-                        'activity_score': hot.get('activity_score', 0)
+                        'activity_score': hot.get('activity_score', 0),
+                        'price': f"${hot.get('strike', 0):.2f}" if hot.get('strike') else '',
+                        'activity_level': 'VERY_HIGH' if hot.get('activity_score', 0) > 0.8 else 'HIGH'
                     })
                 
                 # Determine institutional bias from summary
                 call_volume = summary.get('call_volume', 0)
                 put_volume = summary.get('put_volume', 0)
                 dominant_flow = summary.get('dominant_flow', 'NEUTRAL')
+                total_volume = summary.get('total_volume', 0)
+                put_call_ratio = summary.get('put_call_ratio', 0)
+                
+                # BUG FIX: Calculate confidence based on volume and ratio
+                if total_volume > 0:
+                    if put_call_ratio > 1.5 or put_call_ratio < 0.67:
+                        confidence = 0.85
+                    elif put_call_ratio > 1.2 or put_call_ratio < 0.83:
+                        confidence = 0.7
+                    else:
+                        confidence = 0.5
+                else:
+                    confidence = 0.5
                 
                 institutional_bias = {
                     'direction': dominant_flow,
-                    'confidence': 0.8 if dominant_flow != 'NEUTRAL' else 0.5,
+                    'confidence': confidence if dominant_flow != 'NEUTRAL' else 0.5,
                     'call_volume': call_volume,
                     'put_volume': put_volume,
-                    'put_call_ratio': summary.get('put_call_ratio', 0)
+                    'put_call_ratio': put_call_ratio,
+                    'total_volume': total_volume  # BUG FIX: Include total volume
                 }
                 
                 return {
@@ -234,7 +312,10 @@ class OptionsContextBuilder:
                     'active_patterns': summary.get('active_patterns', 0),
                     'sweep_patterns': summary.get('sweep_patterns', 0),
                     'block_patterns': summary.get('block_patterns', 0),
-                    'unusual_volume_patterns': summary.get('unusual_volume_patterns', 0)
+                    'unusual_volume_patterns': summary.get('unusual_volume_patterns', 0),
+                    'total_volume': total_volume,  # BUG FIX: Expose at top level
+                    'call_volume': call_volume,  # BUG FIX: Expose at top level
+                    'put_volume': put_volume  # BUG FIX: Expose at top level
                 }
             
             # Fallback to creating summary from contracts if no snapshot summary

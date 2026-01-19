@@ -18,6 +18,11 @@ try:
 except ImportError:
     raise ImportError("websockets package required. Install with: pip install websockets")
 
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None  # Optional, for REST API polling
+
 logger = logging.getLogger(__name__)
 
 
@@ -150,6 +155,10 @@ class DirectExchangeClient:
             task = asyncio.create_task(self._run_exchange(name, connect_func))
             self._tasks.append(task)
         
+        # Start Binance Futures Open Interest REST polling (no WebSocket stream available)
+        oi_task = asyncio.create_task(self._poll_binance_open_interest())
+        self._tasks.append(oi_task)
+        
         # Wait for initial connections
         await asyncio.sleep(3)
         
@@ -191,6 +200,64 @@ class DirectExchangeClient:
                 logger.info(f"{name} reconnecting in {reconnect_delay}s...")
                 await asyncio.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 1.5, max_delay)
+    
+    async def _poll_binance_open_interest(self):
+        """
+        Poll Binance Futures Open Interest via REST API.
+        Binance does NOT provide Open Interest via WebSocket - only REST API.
+        Endpoint: GET /fapi/v1/openInterest
+        
+        Note: Binance Spot does NOT have Open Interest (it's a spot market, not derivatives).
+        """
+        if aiohttp is None:
+            logger.warning("aiohttp not installed - Binance OI polling disabled. Install with: pip install aiohttp")
+            return
+        
+        poll_interval = 10  # Poll every 10 seconds (rate limit safe)
+        base_url = "https://fapi.binance.com/fapi/v1/openInterest"
+        
+        logger.info("✓ Started Binance Futures Open Interest polling (REST API)")
+        
+        while self._running:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    for symbol in self.SUPPORTED_SYMBOLS:
+                        try:
+                            url = f"{base_url}?symbol={symbol}"
+                            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                                if resp.status == 200:
+                                    data = await resp.json()
+                                    # Response: {"openInterest": "1234.567", "symbol": "BTCUSDT", "time": 1609459200000}
+                                    oi = float(data.get("openInterest", 0))
+                                    timestamp = int(data.get("time", time.time() * 1000))
+                                    
+                                    if oi > 0:
+                                        # Calculate OI value (OI * current price)
+                                        oi_value = 0.0
+                                        if symbol in self.prices and "binance_futures" in self.prices[symbol]:
+                                            price = self.prices[symbol]["binance_futures"].get("price", 0)
+                                            oi_value = oi * price
+                                        
+                                        await self._update_open_interest(symbol, "binance_futures", oi, oi_value)
+                                        logger.debug(f"Binance Futures {symbol} OI: {oi:,.2f} (${oi_value:,.0f})")
+                                else:
+                                    logger.debug(f"Binance OI request failed for {symbol}: {resp.status}")
+                        except asyncio.TimeoutError:
+                            logger.debug(f"Binance OI timeout for {symbol}")
+                        except Exception as e:
+                            logger.debug(f"Binance OI error for {symbol}: {e}")
+                        
+                        # Small delay between symbols to avoid rate limits
+                        await asyncio.sleep(0.2)
+                
+                await asyncio.sleep(poll_interval)
+                
+            except asyncio.CancelledError:
+                logger.info("Binance OI polling cancelled")
+                break
+            except Exception as e:
+                logger.warning(f"Binance OI polling error: {e}")
+                await asyncio.sleep(poll_interval)
     
     # ========================================================================
     # Exchange Connection Methods
@@ -472,6 +539,10 @@ class DirectExchangeClient:
                             index = float(payload.get("indexPrice", 0) or 0)
                             next_time = int(payload.get("nextFundingTime", 0) or 0)
                             await self._update_mark_price(symbol, "bybit_futures", mark, index, funding_rate, next_time)
+                            
+                            # Update index price separately for basis calculations
+                            if index > 0:
+                                await self._update_index_price(symbol, "bybit_futures", index)
                         
                         # Open Interest
                         oi = float(payload.get("openInterest", 0) or 0)
@@ -563,18 +634,30 @@ class DirectExchangeClient:
                     {"channel": "mark-price", "instId": inst},        # Mark price
                     {"channel": "funding-rate", "instId": inst},      # Funding rate
                     {"channel": "open-interest", "instId": inst},     # Open interest
-                    {"channel": "candle1m", "instId": inst},          # 1-minute candles (NEW)
+                    {"channel": "candle1m", "instId": inst},          # 1-minute candles
                     {"channel": "liquidation-orders", "instType": "SWAP"},  # Liquidations
                 ])
+            
+            # Add index price subscriptions (OKX uses instId format like "BTC-USDT")
+            okx_index_symbols = {
+                "BTCUSDT": "BTC-USDT",
+                "ETHUSDT": "ETH-USDT", 
+                "SOLUSDT": "SOL-USDT",
+                "XRPUSDT": "XRP-USDT"
+            }
+            for idx_inst in okx_index_symbols.values():
+                args.append({"channel": "index-tickers", "instId": idx_inst})
             
             subscribe_msg = {"op": "subscribe", "args": args}
             await ws.send(json.dumps(subscribe_msg))
             
             self.connected_exchanges["okx_futures"] = True
-            logger.info("✓ Connected to OKX Futures (ALL STREAMS)")
+            logger.info("✓ Connected to OKX Futures (ALL STREAMS + Index Prices)")
             
             # Reverse mapping for symbol lookup
             reverse_symbols = {v: k for k, v in okx_symbols.items()}
+            # Also add reverse mapping for index symbols
+            reverse_index_symbols = {v: k for k, v in okx_index_symbols.items()}
             
             async for message in ws:
                 if not self._running:
@@ -587,13 +670,13 @@ class DirectExchangeClient:
                     
                     channel = data.get("arg", {}).get("channel", "")
                     inst_id = data.get("arg", {}).get("instId", "")
-                    symbol = reverse_symbols.get(inst_id)
+                    symbol = reverse_symbols.get(inst_id) or reverse_index_symbols.get(inst_id)
                     
                     for item in data["data"]:
                         # Get symbol from item if not from arg
                         if not symbol:
                             item_inst = item.get("instId", "")
-                            symbol = reverse_symbols.get(item_inst)
+                            symbol = reverse_symbols.get(item_inst) or reverse_index_symbols.get(item_inst)
                         
                         if not symbol:
                             continue
@@ -631,6 +714,12 @@ class DirectExchangeClient:
                         elif channel == "mark-price":
                             mark = float(item.get("markPx", 0) or 0)
                             await self._update_mark_price(symbol, "okx_futures", mark, 0, 0, 0)
+                        
+                        elif channel == "index-tickers":
+                            # OKX index price from index-tickers channel
+                            index = float(item.get("idxPx", 0) or 0)
+                            if index > 0:
+                                await self._update_index_price(symbol, "okx_futures", index)
                         
                         elif channel == "funding-rate":
                             rate = float(item.get("fundingRate", 0) or 0)
@@ -778,7 +867,7 @@ class DirectExchangeClient:
                     logger.debug(f"Bybit spot parse error: {e}")
     
     async def _connect_kraken_futures(self):
-        """Connect to Kraken Futures WebSocket - ALL streams."""
+        """Connect to Kraken Futures WebSocket - ALL streams including liquidations & candles."""
         url = "wss://futures.kraken.com/ws/v1"
         
         # Kraken uses different symbol format (PF = Perpetual Futures)
@@ -792,8 +881,8 @@ class DirectExchangeClient:
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
             product_ids = list(kraken_symbols.values())
             
-            # Subscribe to multiple feeds
-            # Ticker feed
+            # Subscribe to ALL available feeds
+            # Ticker feed (includes mark/index price, funding, OI)
             await ws.send(json.dumps({
                 "event": "subscribe",
                 "feed": "ticker",
@@ -821,11 +910,31 @@ class DirectExchangeClient:
                 "product_ids": product_ids
             }))
             
+            # Liquidations feed (NEW - fills_snapshot for liquidations)
+            await ws.send(json.dumps({
+                "event": "subscribe",
+                "feed": "fills",
+                "product_ids": product_ids
+            }))
+            
+            # Candles feed - 1 minute (NEW)
+            # Kraken uses trade_snapshot for building candles, or we use ticker_lite
+            await ws.send(json.dumps({
+                "event": "subscribe",
+                "feed": "ticker_lite",
+                "product_ids": product_ids
+            }))
+            
             self.connected_exchanges["kraken_futures"] = True
-            logger.info("✓ Connected to Kraken Futures (ALL STREAMS)")
+            logger.info("✓ Connected to Kraken Futures (ALL STREAMS + Liquidations + Candles)")
             
             # Reverse mapping
             reverse_symbols = {v: k for k, v in kraken_symbols.items()}
+            
+            # Track candle data for building 1-min candles
+            candle_data = {sym: {"open": 0, "high": 0, "low": float('inf'), "close": 0, 
+                                 "volume": 0, "start_time": 0, "trade_count": 0} 
+                         for sym in self.SUPPORTED_SYMBOLS}
             
             async for message in ws:
                 if not self._running:
@@ -845,7 +954,7 @@ class DirectExchangeClient:
                             mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "kraken_futures", mid_price, bid, ask)
                         
-                        # Funding rate from ticker
+                        # Mark price, Index price, and Funding rate from ticker
                         funding_rate = float(data.get("fundingRate", 0) or 0)
                         funding_rate_pred = float(data.get("fundingRatePrediction", 0) or 0)
                         mark = float(data.get("markPrice", 0) or 0)
@@ -854,6 +963,10 @@ class DirectExchangeClient:
                         
                         if funding_rate != 0 or mark > 0:
                             await self._update_mark_price(symbol, "kraken_futures", mark, index, funding_rate, next_funding)
+                        
+                        # Update index price separately for basis calculations
+                        if index > 0:
+                            await self._update_index_price(symbol, "kraken_futures", index)
                         
                         # 24h stats
                         vol = float(data.get("vol24h", 0) or 0)
@@ -867,6 +980,58 @@ class DirectExchangeClient:
                         oi = float(data.get("openInterest", 0) or 0)
                         if oi > 0:
                             await self._update_open_interest(symbol, "kraken_futures", oi, 0)
+                        
+                        # Build 1-min candles from ticker updates
+                        if last > 0:
+                            current_minute = int(time.time() // 60) * 60 * 1000
+                            cd = candle_data[symbol]
+                            
+                            if cd["start_time"] == 0 or current_minute > cd["start_time"]:
+                                # New candle - save previous if exists
+                                if cd["start_time"] > 0 and cd["open"] > 0:
+                                    await self._update_candle(
+                                        symbol, "kraken_futures",
+                                        open_time=cd["start_time"],
+                                        open_price=cd["open"],
+                                        high_price=cd["high"],
+                                        low_price=cd["low"],
+                                        close_price=cd["close"],
+                                        volume=cd["volume"],
+                                        close_time=cd["start_time"] + 60000,
+                                        quote_volume=0,
+                                        trades=cd["trade_count"],
+                                        taker_buy_volume=0,
+                                        taker_buy_quote_volume=0
+                                    )
+                                # Reset for new candle
+                                cd["start_time"] = current_minute
+                                cd["open"] = last
+                                cd["high"] = last
+                                cd["low"] = last
+                                cd["close"] = last
+                                cd["volume"] = 0
+                                cd["trade_count"] = 0
+                            else:
+                                # Update current candle
+                                cd["high"] = max(cd["high"], last)
+                                cd["low"] = min(cd["low"], last)
+                                cd["close"] = last
+                    
+                    elif feed == "ticker_lite" and symbol:
+                        # Lightweight ticker - also update candle close price
+                        last = float(data.get("last", 0) or 0)
+                        mark = float(data.get("markPrice", 0) or 0)
+                        
+                        if last > 0:
+                            cd = candle_data[symbol]
+                            if cd["start_time"] > 0:
+                                cd["high"] = max(cd["high"], last)
+                                cd["low"] = min(cd["low"], last)
+                                cd["close"] = last
+                        
+                        # Update mark price from ticker_lite too
+                        if mark > 0:
+                            await self._update_mark_price(symbol, "kraken_futures", mark, 0, 0, 0)
                     
                     elif feed == "book_snapshot" and symbol:
                         bids = [[float(b["price"]), float(b["qty"])] for b in data.get("bids", [])[:10]]
@@ -877,12 +1042,34 @@ class DirectExchangeClient:
                         trades = data.get("trades", [data]) if "trades" in data else [data]
                         for trade in trades:
                             side = trade.get("side", "")
+                            price = float(trade.get("price", 0))
+                            qty = float(trade.get("qty", 0))
+                            
                             await self._update_trade(
                                 symbol, "kraken_futures",
-                                price=float(trade.get("price", 0)),
-                                quantity=float(trade.get("qty", 0)),
+                                price=price,
+                                quantity=qty,
                                 is_buyer_maker=side == "sell",
                                 timestamp=int(trade.get("time", time.time() * 1000))
+                            )
+                            
+                            # Update candle volume from trades
+                            if price > 0 and qty > 0:
+                                cd = candle_data[symbol]
+                                if cd["start_time"] > 0:
+                                    cd["volume"] += qty
+                                    cd["trade_count"] += 1
+                    
+                    elif feed == "fills" and symbol:
+                        # Liquidations come through fills feed with type "liquidation"
+                        fill_type = data.get("type", "")
+                        if fill_type == "liquidation" or data.get("liquidation", False):
+                            await self._update_liquidation(
+                                symbol, "kraken_futures",
+                                side=data.get("side", ""),
+                                price=float(data.get("price", 0)),
+                                quantity=float(data.get("qty", data.get("size", 0))),
+                                timestamp=int(data.get("time", time.time() * 1000))
                             )
                     
                     elif feed == "open_interest" and symbol:
@@ -961,6 +1148,10 @@ class DirectExchangeClient:
                                 next_funding = int(ticker.get("funding_next_apply", 0) or 0)
                                 if funding != 0 or mark > 0:
                                     await self._update_mark_price(symbol, "gate_futures", mark, index, funding, next_funding)
+                                
+                                # Update index price separately for basis calculations
+                                if index > 0:
+                                    await self._update_index_price(symbol, "gate_futures", index)
                                 
                                 # 24h stats
                                 vol = float(ticker.get("volume_24h", 0) or 0)
@@ -1041,7 +1232,7 @@ class DirectExchangeClient:
                     logger.debug(f"Gate parse error: {e}")
     
     async def _connect_hyperliquid(self):
-        """Connect to Hyperliquid WebSocket - ALL streams."""
+        """Connect to Hyperliquid WebSocket - ALL streams including candles, liquidations, 24h stats."""
         url = "wss://api.hyperliquid.xyz/ws"
         
         # Hyperliquid uses simple symbols like "BTC", "ETH"
@@ -1054,7 +1245,8 @@ class DirectExchangeClient:
         reverse_symbols = {v: k for k, v in hl_symbols.items()}
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to multiple streams
+            # Subscribe to ALL available streams
+            
             # 1. All mids (mid prices for all assets)
             await ws.send(json.dumps({
                 "method": "subscribe",
@@ -1075,14 +1267,42 @@ class DirectExchangeClient:
                     "subscription": {"type": "trades", "coin": hl_sym}
                 }))
             
-            # 4. User fills / liquidations (public)
+            # 4. Active asset context (funding, OI, mark price)
             await ws.send(json.dumps({
                 "method": "subscribe",
                 "subscription": {"type": "activeAssetCtx"}
             }))
             
+            # 5. Candles (1-minute) for each symbol (NEW)
+            for hl_sym in hl_symbols.values():
+                await ws.send(json.dumps({
+                    "method": "subscribe",
+                    "subscription": {"type": "candle", "coin": hl_sym, "interval": "1m"}
+                }))
+            
+            # 6. Liquidations / Non-user fills (NEW)
+            await ws.send(json.dumps({
+                "method": "subscribe",
+                "subscription": {"type": "notification", "user": "0x0000000000000000000000000000000000000000"}
+            }))
+            
+            # 7. WebData2 for comprehensive 24h stats (NEW)
+            await ws.send(json.dumps({
+                "method": "subscribe",
+                "subscription": {"type": "webData2", "user": "0x0000000000000000000000000000000000000000"}
+            }))
+            
             self.connected_exchanges["hyperliquid_futures"] = True
-            logger.info("✓ Connected to Hyperliquid (ALL STREAMS)")
+            logger.info("✓ Connected to Hyperliquid (ALL STREAMS + Candles + Liquidations + 24h Stats)")
+            
+            # Track 24h stats from trades
+            trade_stats_24h = {sym: {"volume": 0, "high": 0, "low": float('inf'), "first_price": 0, "last_price": 0}
+                             for sym in self.SUPPORTED_SYMBOLS}
+            
+            # Track candle data
+            candle_data = {sym: {"open": 0, "high": 0, "low": float('inf'), "close": 0, 
+                                 "volume": 0, "start_time": 0, "trade_count": 0} 
+                         for sym in self.SUPPORTED_SYMBOLS}
             
             async for message in ws:
                 if not self._running:
@@ -1109,6 +1329,13 @@ class DirectExchangeClient:
                             bids = [[float(b["px"]), float(b["sz"])] for b in book[0][:10]] if len(book) > 0 else []
                             asks = [[float(a["px"]), float(a["sz"])] for a in book[1][:10]] if len(book) > 1 else []
                             await self._update_orderbook(symbol, "hyperliquid_futures", bids, asks)
+                            
+                            # Extract bid/ask for better price data
+                            if bids and asks:
+                                best_bid = bids[0][0]
+                                best_ask = asks[0][0]
+                                mid = (best_bid + best_ask) / 2
+                                await self._update_price(symbol, "hyperliquid_futures", mid, best_bid, best_ask)
                     
                     elif channel == "trades":
                         trades = payload if isinstance(payload, list) else [payload]
@@ -1116,28 +1343,167 @@ class DirectExchangeClient:
                             coin = trade.get("coin", "")
                             symbol = reverse_symbols.get(coin)
                             if symbol:
+                                price = float(trade.get("px", 0))
+                                qty = float(trade.get("sz", 0))
+                                
                                 await self._update_trade(
                                     symbol, "hyperliquid_futures",
-                                    price=float(trade.get("px", 0)),
-                                    quantity=float(trade.get("sz", 0)),
+                                    price=price,
+                                    quantity=qty,
                                     is_buyer_maker=trade.get("side", "") == "A",  # A = ask (sell)
                                     timestamp=int(trade.get("time", time.time() * 1000))
                                 )
+                                
+                                # Update 24h stats from trades
+                                if price > 0 and qty > 0:
+                                    stats = trade_stats_24h[symbol]
+                                    stats["volume"] += qty
+                                    stats["high"] = max(stats["high"], price) if stats["high"] > 0 else price
+                                    stats["low"] = min(stats["low"], price)
+                                    if stats["first_price"] == 0:
+                                        stats["first_price"] = price
+                                    stats["last_price"] = price
+                                    
+                                    # Calculate change percentage
+                                    change_pct = 0
+                                    if stats["first_price"] > 0:
+                                        change_pct = ((stats["last_price"] - stats["first_price"]) / stats["first_price"]) * 100
+                                    
+                                    await self._update_ticker_24h(
+                                        symbol, "hyperliquid_futures",
+                                        volume=stats["volume"],
+                                        quote_volume=stats["volume"] * price,
+                                        high=stats["high"],
+                                        low=stats["low"] if stats["low"] < float('inf') else 0,
+                                        price_change_pct=change_pct,
+                                        trades_count=0
+                                    )
+                                
+                                # Build 1-min candles from trades
+                                current_minute = int(time.time() // 60) * 60 * 1000
+                                cd = candle_data[symbol]
+                                
+                                if cd["start_time"] == 0 or current_minute > cd["start_time"]:
+                                    # New candle - save previous if exists
+                                    if cd["start_time"] > 0 and cd["open"] > 0:
+                                        await self._update_candle(
+                                            symbol, "hyperliquid_futures",
+                                            open_time=cd["start_time"],
+                                            open_price=cd["open"],
+                                            high_price=cd["high"],
+                                            low_price=cd["low"] if cd["low"] < float('inf') else cd["open"],
+                                            close_price=cd["close"],
+                                            volume=cd["volume"],
+                                            close_time=cd["start_time"] + 60000,
+                                            quote_volume=0,
+                                            trades=cd["trade_count"],
+                                            taker_buy_volume=0,
+                                            taker_buy_quote_volume=0
+                                        )
+                                    # Reset for new candle
+                                    cd["start_time"] = current_minute
+                                    cd["open"] = price
+                                    cd["high"] = price
+                                    cd["low"] = price
+                                    cd["close"] = price
+                                    cd["volume"] = qty
+                                    cd["trade_count"] = 1
+                                else:
+                                    # Update current candle
+                                    cd["high"] = max(cd["high"], price)
+                                    cd["low"] = min(cd["low"], price)
+                                    cd["close"] = price
+                                    cd["volume"] += qty
+                                    cd["trade_count"] += 1
+                    
+                    elif channel == "candle":
+                        # Direct candle updates from Hyperliquid (if available)
+                        candles = payload if isinstance(payload, list) else [payload]
+                        for candle in candles:
+                            coin = candle.get("s", candle.get("coin", ""))
+                            symbol = reverse_symbols.get(coin)
+                            if symbol:
+                                await self._update_candle(
+                                    symbol, "hyperliquid_futures",
+                                    open_time=int(candle.get("t", 0)),
+                                    open_price=float(candle.get("o", 0)),
+                                    high_price=float(candle.get("h", 0)),
+                                    low_price=float(candle.get("l", 0)),
+                                    close_price=float(candle.get("c", 0)),
+                                    volume=float(candle.get("v", 0)),
+                                    close_time=int(candle.get("t", 0)) + 60000,
+                                    quote_volume=0,
+                                    trades=int(candle.get("n", 0)),
+                                    taker_buy_volume=0,
+                                    taker_buy_quote_volume=0
+                                )
                     
                     elif channel == "activeAssetCtx":
-                        # Contains funding rates and open interest
-                        for ctx in payload if isinstance(payload, list) else [payload]:
+                        # Contains funding rates, open interest, mark price, oracle/index price
+                        ctx_list = payload if isinstance(payload, list) else [payload]
+                        for ctx in ctx_list:
                             coin = ctx.get("coin", "")
                             symbol = reverse_symbols.get(coin)
                             if symbol:
                                 funding = float(ctx.get("funding", 0) or 0)
                                 oi = float(ctx.get("openInterest", 0) or 0)
                                 mark = float(ctx.get("markPx", 0) or 0)
+                                oracle = float(ctx.get("oraclePx", ctx.get("indexPx", 0)) or 0)
+                                premium = float(ctx.get("premium", 0) or 0)
                                 
                                 if funding != 0 or mark > 0:
-                                    await self._update_mark_price(symbol, "hyperliquid_futures", mark, 0, funding, 0)
+                                    await self._update_mark_price(symbol, "hyperliquid_futures", mark, oracle, funding, 0)
+                                
+                                # Update index price separately (oracle price is index)
+                                if oracle > 0:
+                                    await self._update_index_price(symbol, "hyperliquid_futures", oracle)
+                                
                                 if oi > 0:
-                                    await self._update_open_interest(symbol, "hyperliquid_futures", oi, 0)
+                                    # Calculate OI value
+                                    oi_value = oi * mark if mark > 0 else 0
+                                    await self._update_open_interest(symbol, "hyperliquid_futures", oi, oi_value)
+                    
+                    elif channel == "notification":
+                        # Liquidation notifications
+                        notif_type = payload.get("type", "")
+                        if "liquidation" in notif_type.lower() or payload.get("isLiquidation", False):
+                            coin = payload.get("coin", payload.get("asset", ""))
+                            symbol = reverse_symbols.get(coin)
+                            if symbol:
+                                await self._update_liquidation(
+                                    symbol, "hyperliquid_futures",
+                                    side=payload.get("side", ""),
+                                    price=float(payload.get("px", payload.get("price", 0))),
+                                    quantity=float(payload.get("sz", payload.get("size", 0))),
+                                    timestamp=int(payload.get("time", time.time() * 1000))
+                                )
+                    
+                    elif channel == "webData2":
+                        # Comprehensive market data including 24h stats
+                        asset_ctxs = payload.get("assetCtxs", [])
+                        for ctx in asset_ctxs:
+                            coin = ctx.get("coin", "")
+                            symbol = reverse_symbols.get(coin)
+                            if symbol:
+                                vol_24h = float(ctx.get("dayNtlVlm", 0) or 0)
+                                mark = float(ctx.get("markPx", 0) or 0)
+                                oracle = float(ctx.get("oraclePx", 0) or 0)
+                                funding = float(ctx.get("funding", 0) or 0)
+                                oi = float(ctx.get("openInterest", 0) or 0)
+                                
+                                if vol_24h > 0:
+                                    await self._update_ticker_24h(
+                                        symbol, "hyperliquid_futures",
+                                        volume=vol_24h / mark if mark > 0 else 0,
+                                        quote_volume=vol_24h,
+                                        high=0, low=0, price_change_pct=0, trades_count=0
+                                    )
+                                
+                                if mark > 0:
+                                    await self._update_mark_price(symbol, "hyperliquid_futures", mark, oracle, funding, 0)
+                                
+                                if oracle > 0:
+                                    await self._update_index_price(symbol, "hyperliquid_futures", oracle)
                                     
                 except json.JSONDecodeError:
                     pass
