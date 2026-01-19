@@ -487,19 +487,25 @@ class DirectExchangeClient:
         url = "wss://stream.bybit.com/v5/public/linear"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to ALL available streams
-            args = []
-            for sym in self.SUPPORTED_SYMBOLS:
-                args.extend([
-                    f"tickers.{sym}",           # Ticker with bid/ask/volume/OI/funding
-                    f"orderbook.50.{sym}",      # Top 50 orderbook levels (increased from 25)
-                    f"publicTrade.{sym}",       # Public trades
-                    f"liquidation.{sym}",       # Liquidations
-                    f"kline.1.{sym}",           # 1-minute candlesticks (NEW)
-                ])
+            # Subscribe to streams - Bybit has arg limits, so batch subscriptions
+            # Note: liquidation.{symbol} doesn't exist in linear, use allLiquidation instead
             
-            subscribe_msg = {"op": "subscribe", "args": args}
-            await ws.send(json.dumps(subscribe_msg))
+            # First batch: tickers (high priority)
+            ticker_args = [f"tickers.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": ticker_args}))
+            
+            # Second batch: orderbooks
+            ob_args = [f"orderbook.50.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": ob_args}))
+            
+            # Third batch: trades
+            trade_args = [f"publicTrade.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": trade_args}))
+            
+            # Fourth batch: klines + all liquidations
+            kline_args = [f"kline.1.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            kline_args.append("allLiquidation")  # All liquidations stream
+            await ws.send(json.dumps({"op": "subscribe", "args": kline_args}))
             
             self.connected_exchanges["bybit_futures"] = True
             logger.info("✓ Connected to Bybit Futures (ALL STREAMS)")
@@ -524,25 +530,31 @@ class DirectExchangeClient:
                     
                     if topic.startswith("tickers."):
                         # Ticker data with funding, OI, volume
+                        # Note: Bybit sends delta updates - not all fields present every time
                         bid = float(payload.get("bid1Price", 0) or 0)
                         ask = float(payload.get("ask1Price", 0) or 0)
                         last = float(payload.get("lastPrice", 0) or 0)
                         
+                        # Update price - prefer bid/ask midpoint, fall back to lastPrice
                         if bid > 0 and ask > 0:
                             mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "bybit_futures", mid_price, bid, ask)
+                        elif last > 0:
+                            # Partial update - use lastPrice
+                            await self._update_price(symbol, "bybit_futures", last, last, last)
                         
-                        # Funding rate
+                        # Mark price, Index price, and Funding rate (update whenever available)
+                        mark = float(payload.get("markPrice", 0) or 0)
+                        index = float(payload.get("indexPrice", 0) or 0)
                         funding_rate = float(payload.get("fundingRate", 0) or 0)
-                        if funding_rate != 0:
-                            mark = float(payload.get("markPrice", 0) or 0)
-                            index = float(payload.get("indexPrice", 0) or 0)
-                            next_time = int(payload.get("nextFundingTime", 0) or 0)
+                        next_time = int(payload.get("nextFundingTime", 0) or 0)
+                        
+                        if mark > 0 or funding_rate != 0:
                             await self._update_mark_price(symbol, "bybit_futures", mark, index, funding_rate, next_time)
-                            
-                            # Update index price separately for basis calculations
-                            if index > 0:
-                                await self._update_index_price(symbol, "bybit_futures", index)
+                        
+                        # Update index price separately for basis calculations
+                        if index > 0:
+                            await self._update_index_price(symbol, "bybit_futures", index)
                         
                         # Open Interest
                         oi = float(payload.get("openInterest", 0) or 0)
@@ -576,15 +588,17 @@ class DirectExchangeClient:
                                 timestamp=int(trade.get("T", time.time() * 1000))
                             )
                     
-                    elif topic.startswith("liquidation."):
-                        # Liquidation
-                        await self._update_liquidation(
-                            symbol, "bybit_futures",
-                            side=payload.get("side", ""),
-                            price=float(payload.get("price", 0)),
-                            quantity=float(payload.get("size", 0)),
-                            timestamp=int(payload.get("updatedTime", time.time() * 1000))
-                        )
+                    elif topic == "allLiquidation":
+                        # All liquidations stream (format different from per-symbol)
+                        liq_symbol = payload.get("symbol", "")
+                        if liq_symbol in self.SUPPORTED_SYMBOLS:
+                            await self._update_liquidation(
+                                liq_symbol, "bybit_futures",
+                                side=payload.get("side", ""),
+                                price=float(payload.get("price", 0)),
+                                quantity=float(payload.get("size", 0)),
+                                timestamp=int(payload.get("updatedTime", time.time() * 1000))
+                            )
                     
                     elif topic.startswith("kline."):
                         # 1-minute candlestick (NEW)
@@ -609,7 +623,7 @@ class DirectExchangeClient:
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
-                    logger.debug(f"Bybit futures parse error: {e}")
+                    logger.warning(f"Bybit futures parse error: {e}")
     
     async def _connect_okx_futures(self):
         """Connect to OKX Futures WebSocket - ALL streams."""
@@ -774,18 +788,23 @@ class DirectExchangeClient:
         url = "wss://stream.bybit.com/v5/public/spot"
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to ALL available spot streams
-            args = []
-            for sym in self.SUPPORTED_SYMBOLS:
-                args.extend([
-                    f"tickers.{sym}",           # Ticker with bid/ask/volume
-                    f"orderbook.50.{sym}",      # Top 50 orderbook levels
-                    f"publicTrade.{sym}",       # Public trades
-                    f"kline.1.{sym}",           # 1-minute candles (NEW)
-                ])
+            # Subscribe to streams - Bybit has 10 args per message limit, so batch subscriptions
             
-            subscribe_msg = {"op": "subscribe", "args": args}
-            await ws.send(json.dumps(subscribe_msg))
+            # First batch: tickers (high priority)
+            ticker_args = [f"tickers.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": ticker_args}))
+            
+            # Second batch: orderbooks  
+            ob_args = [f"orderbook.50.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": ob_args}))
+            
+            # Third batch: trades
+            trade_args = [f"publicTrade.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": trade_args}))
+            
+            # Fourth batch: klines
+            kline_args = [f"kline.1.{sym}" for sym in self.SUPPORTED_SYMBOLS]
+            await ws.send(json.dumps({"op": "subscribe", "args": kline_args}))
             
             self.connected_exchanges["bybit_spot"] = True
             logger.info("✓ Connected to Bybit Spot (ALL STREAMS)")
@@ -809,13 +828,18 @@ class DirectExchangeClient:
                         continue
                     
                     if topic.startswith("tickers."):
+                        # Note: Bybit sends delta updates - not all fields present every time
                         bid = float(payload.get("bid1Price", 0) or 0)
                         ask = float(payload.get("ask1Price", 0) or 0)
                         last = float(payload.get("lastPrice", 0) or 0)
                         
+                        # Update price - prefer bid/ask midpoint, fall back to lastPrice
                         if bid > 0 and ask > 0:
                             mid_price = (bid + ask) / 2
                             await self._update_price(symbol, "bybit_spot", mid_price, bid, ask)
+                        elif last > 0:
+                            # Partial update - use lastPrice
+                            await self._update_price(symbol, "bybit_spot", last, last, last)
                         
                         # 24h stats
                         volume = float(payload.get("volume24h", 0) or 0)
@@ -823,7 +847,8 @@ class DirectExchangeClient:
                         high = float(payload.get("highPrice24h", 0) or 0)
                         low = float(payload.get("lowPrice24h", 0) or 0)
                         change_pct = float(payload.get("price24hPcnt", 0) or 0) * 100
-                        await self._update_ticker_24h(symbol, "bybit_spot", volume, turnover, high, low, change_pct, 0)
+                        if volume > 0 or high > 0:  # Only update if we have actual stats
+                            await self._update_ticker_24h(symbol, "bybit_spot", volume, turnover, high, low, change_pct, 0)
                     
                     elif topic.startswith("orderbook."):
                         bids = [[float(b[0]), float(b[1])] for b in payload.get("b", [])]
