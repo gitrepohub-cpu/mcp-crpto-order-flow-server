@@ -4,9 +4,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                           DATA COLLECTION BY EXCHANGE (9 Exchanges, 4 Symbols)                          │
+│                           DATA COLLECTION BY EXCHANGE (9 Exchanges, 9 Symbols)                          │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│  Symbols: BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT                                                            │
+│  Symbols: BTCUSDT, ETHUSDT, SOLUSDT, XRPUSDT, BRETTUSDT, POPCATUSDT, WIFUSDT, ARUSDT, PNUTUSDT         │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────┬────────┬────────┬────────┬────────┬────────┬────────┬────────┬────────┬──────────┐
@@ -373,28 +373,35 @@ candles[symbol][exchange] = {
 │     • 2 Spot: Binance, Bybit                                                                │
 │     • 1 Oracle: Pyth Network                                                                │
 │                                                                                             │
-│   SYMBOLS: 4 major pairs                                                                    │
+│   SYMBOLS: 9 tokens (4 major + 5 meme coins)                                                │
 │     • BTCUSDT (Bitcoin)                                                                     │
 │     • ETHUSDT (Ethereum)                                                                    │
 │     • SOLUSDT (Solana)                                                                      │
 │     • XRPUSDT (XRP)                                                                         │
+│     • BRETTUSDT (Brett - Base meme coin)                                                    │
+│     • POPCATUSDT (Popcat - Solana meme coin)                                                │
+│     • WIFUSDT (dogwifhat - Solana meme coin)                                                │
+│     • ARUSDT (Arweave - storage protocol)                                                   │
+│     • PNUTUSDT (Peanut the Squirrel - Solana meme coin)                                     │
 │                                                                                             │
-│   DATA STREAMS: ~215 active feeds (after Gate.io + Hyperliquid enhancements)               │
-│     • Prices:         36 feeds                                                              │
-│     • Mark Prices:    24 feeds (added: Hyperliquid)                                         │
-│     • Index Prices:   20 feeds (added: Hyperliquid)                                         │
-│     • Funding Rates:  24 feeds (added: Hyperliquid)                                         │
-│     • Open Interest:  24 feeds (added: Hyperliquid)                                         │
-│     • 24H Ticker:     36 feeds                                                              │
-│     • Orderbooks:     36 feeds (added: Gate.io)                                             │
-│     • Trade Streams:  36 feeds                                                              │
-│     • Candles:        28 feeds (added: Gate.io, Hyperliquid)                                │
-│     • Liquidations:   7 exchanges (added: Gate.io, Hyperliquid)                             │
+│   DATA STREAMS: ~485 active feeds (9 symbols × ~54 feeds/symbol)                            │
+│     • Prices:         81 feeds (9 exchanges × 9 symbols)                                    │
+│     • Mark Prices:    54 feeds (6 futures exchanges × 9 symbols)                            │
+│     • Index Prices:   45 feeds (5 exchanges with index × 9 symbols)                         │
+│     • Funding Rates:  54 feeds (6 futures exchanges × 9 symbols)                            │
+│     • Open Interest:  54 feeds (6 futures exchanges × 9 symbols)                            │
+│     • 24H Ticker:     81 feeds (9 exchanges × 9 symbols)                                    │
+│     • Orderbooks:     81 feeds (9 exchanges × 9 symbols)                                    │
+│     • Trade Streams:  81 feeds (9 exchanges × 9 symbols)                                    │
+│     • Candles:        63 feeds (7 exchanges × 9 symbols)                                    │
+│     • Liquidations:   7 exchanges collecting liquidation events                             │
 │                                                                                             │
 │   NOTES:                                                                                    │
 │     • Kraken Futures: No public liquidation WebSocket API (requires auth)                  │
 │     • Gate.io: Now using futures.public_liquidates (no auth required)                      │
 │     • Hyperliquid: activeAssetCtx + webData2 for derivatives data                          │
+│     • WIF: Not available on Bybit Futures (only Bybit Spot)                                │
+│     • Pyth Oracle: Only AR has a price feed from the new tokens                            │
 │                                                                                             │
 │   SAMPLE 24H VOLUMES (BTC):                                                                 │
 │     • Binance Futures: $11.3B                                                               │
