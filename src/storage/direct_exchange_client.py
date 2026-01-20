@@ -938,12 +938,14 @@ class DirectExchangeClient:
                 "product_ids": product_ids
             }))
             
-            # Liquidations feed (NEW - fills_snapshot for liquidations)
-            await ws.send(json.dumps({
-                "event": "subscribe",
-                "feed": "fills",
-                "product_ids": product_ids
-            }))
+            # Liquidations feed - NOTE: Kraken's 'fills' feed requires authentication
+            # There is NO public liquidation WebSocket API for Kraken Futures
+            # This subscription will not receive data without proper API credentials
+            # await ws.send(json.dumps({
+            #     "event": "subscribe",
+            #     "feed": "fills",
+            #     "product_ids": product_ids
+            # }))
             
             # Candles feed - 1 minute (NEW)
             # Kraken uses trade_snapshot for building candles, or we use ticker_lite
@@ -954,7 +956,7 @@ class DirectExchangeClient:
             }))
             
             self.connected_exchanges["kraken_futures"] = True
-            logger.info("✓ Connected to Kraken Futures (ALL STREAMS + Liquidations + Candles)")
+            logger.info("✓ Connected to Kraken Futures (ticker, book, trade, OI, candles - NO public liquidations API)")
             
             # Reverse mapping
             reverse_symbols = {v: k for k, v in kraken_symbols.items()}
@@ -1125,23 +1127,47 @@ class DirectExchangeClient:
         reverse_symbols = {v: k for k, v in gate_symbols.items()}
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
-            # Subscribe to multiple channels
-            channels = [
-                ("futures.tickers", contracts),          # Ticker with price/funding
-                ("futures.order_book", contracts),       # Orderbook
-                ("futures.trades", contracts),           # Trades
-                ("futures.liquidates", contracts),       # Liquidations
-                ("futures.candlesticks", contracts),     # 1-minute candles (NEW)
-            ]
+            # Subscribe to tickers channel (price, funding, OI, 24h stats)
+            await ws.send(json.dumps({
+                "time": int(time.time()),
+                "channel": "futures.tickers",
+                "event": "subscribe",
+                "payload": contracts
+            }))
             
-            for channel, payload in channels:
-                subscribe_msg = {
+            # Subscribe to trades channel
+            await ws.send(json.dumps({
+                "time": int(time.time()),
+                "channel": "futures.trades",
+                "event": "subscribe",
+                "payload": contracts
+            }))
+            
+            # Subscribe to orderbook channel - Format: [contract, limit, interval]
+            for contract in contracts:
+                await ws.send(json.dumps({
                     "time": int(time.time()),
-                    "channel": channel,
+                    "channel": "futures.order_book",
                     "event": "subscribe",
-                    "payload": payload if channel != "futures.candlesticks" else [f"{c}_1m" for c in payload]
-                }
-                await ws.send(json.dumps(subscribe_msg))
+                    "payload": [contract, "20", "0"]
+                }))
+            
+            # Subscribe to candlesticks - Format: [interval, contract]
+            for contract in contracts:
+                await ws.send(json.dumps({
+                    "time": int(time.time()),
+                    "channel": "futures.candlesticks",
+                    "event": "subscribe",
+                    "payload": ["1m", contract]
+                }))
+            
+            # Subscribe to PUBLIC liquidations channel (no auth required)
+            await ws.send(json.dumps({
+                "time": int(time.time()),
+                "channel": "futures.public_liquidates",
+                "event": "subscribe",
+                "payload": contracts
+            }))
             
             self.connected_exchanges["gate_futures"] = True
             logger.info("✓ Connected to Gate.io Futures (ALL STREAMS)")
@@ -1217,39 +1243,45 @@ class DirectExchangeClient:
                                     timestamp=int(trade.get("create_time", time.time()) * 1000)
                                 )
                     
-                    elif channel == "futures.liquidates":
+                    elif channel == "futures.public_liquidates" or channel == "futures.liquidates":
+                        # Handle both public and private liquidation channels
                         liqs = result if isinstance(result, list) else [result]
                         for liq in liqs:
                             contract = liq.get("contract", "")
                             symbol = reverse_symbols.get(contract)
                             if symbol:
+                                # size can be negative for shorts, positive for longs
+                                size = float(liq.get("size", 0) or 0)
+                                side = "sell" if size < 0 else "buy"  # Liquidation direction
                                 await self._update_liquidation(
                                     symbol, "gate_futures",
-                                    side=liq.get("side", ""),
-                                    price=float(liq.get("price", 0)),
-                                    quantity=float(liq.get("size", 0)),
-                                    timestamp=int(liq.get("time", time.time()) * 1000)
+                                    side=liq.get("side", side),
+                                    price=float(liq.get("price", 0) or 0),
+                                    quantity=abs(size),
+                                    timestamp=int(liq.get("time_ms", liq.get("time", time.time()) * 1000))
                                 )
                     
                     elif channel == "futures.candlesticks":
-                        # Gate.io candle format: {n: name_interval, t: timestamp, o, h, l, c, v, ...}
+                        # Gate.io candle format: {n: "1m_BTC_USDT", t: timestamp, o, h, l, c, v, a, w}
                         candles = result if isinstance(result, list) else [result]
                         for candle in candles:
-                            # Parse contract from name (e.g., "BTC_USDT_1m" -> "BTC_USDT")
+                            # Parse contract from name (e.g., "1m_BTC_USDT" -> "BTC_USDT")
                             name = candle.get("n", "")
-                            contract = name.rsplit("_", 1)[0] if "_1m" in name else name
+                            # Format is "interval_CONTRACT" like "1m_BTC_USDT"
+                            parts = name.split("_", 1)
+                            contract = parts[1] if len(parts) > 1 else name
                             symbol = reverse_symbols.get(contract)
                             if symbol:
                                 await self._update_candle(
                                     symbol, "gate_futures",
                                     open_time=int(candle.get("t", 0)) * 1000,
-                                    open_price=float(candle.get("o", 0)),
-                                    high_price=float(candle.get("h", 0)),
-                                    low_price=float(candle.get("l", 0)),
-                                    close_price=float(candle.get("c", 0)),
-                                    volume=float(candle.get("v", 0)),
+                                    open_price=float(candle.get("o", 0) or 0),
+                                    high_price=float(candle.get("h", 0) or 0),
+                                    low_price=float(candle.get("l", 0) or 0),
+                                    close_price=float(candle.get("c", 0) or 0),
+                                    volume=float(candle.get("v", 0) or 0),
                                     close_time=(int(candle.get("t", 0)) + 60) * 1000,
-                                    quote_volume=float(candle.get("sum", 0)),
+                                    quote_volume=float(candle.get("a", candle.get("sum", 0)) or 0),  # 'a' is amount/quote volume
                                     trades=0,
                                     taker_buy_volume=0,
                                     taker_buy_quote_volume=0
