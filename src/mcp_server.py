@@ -290,8 +290,41 @@ from src.tools.deribit_tools import (
     deribit_settlements_tool,
 )
 
+# Import DuckDB Historical Data Tools
+from src.tools.duckdb_historical_tools import (
+    get_historical_prices,
+    get_historical_trades,
+    get_historical_funding_rates,
+    get_historical_liquidations,
+    get_historical_open_interest,
+    get_database_stats,
+    query_custom_historical,
+)
+
+# Import Live + Historical Combined Tools
+from src.tools.live_historical_tools import (
+    get_market_snapshot_full,
+    get_price_with_history,
+    get_funding_arbitrage_analysis,
+    get_liquidation_heatmap,
+    compare_live_vs_historical,
+)
+
+# Import Feature Calculation Framework
+from src.features.registry import FeatureRegistry
+
 # Initialize MCP server
 mcp = FastMCP("Crypto Arbitrage Analysis Server")
+
+# Initialize and register Feature Calculators
+# The registry auto-discovers calculators from src/features/calculators/
+try:
+    feature_registry = FeatureRegistry()
+    feature_registry.discover_calculators()
+    feature_registry.register_all_with_mcp(mcp)
+    logger.info(f"Registered {len(feature_registry.calculators)} feature calculators")
+except Exception as e:
+    logger.warning(f"Feature calculator registration failed: {e}")
 
 
 # ============================================================================
@@ -790,6 +823,533 @@ async def get_market_overview(symbol: str = "BTCUSDT") -> str:
         logger.error(f"Error getting market overview: {e}", exc_info=True)
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <error type="SUMMARY_FAILED"><message>{str(e)}</message></error>"""
+
+
+# ============================================================================
+# DUCKDB HISTORICAL DATA MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def get_historical_price_data(
+    symbol: str = "BTCUSDT",
+    exchange: str = None,
+    market_type: str = "futures",
+    minutes: int = 60,
+    limit: int = 1000
+) -> str:
+    """
+    Query historical price data from DuckDB database.
+    
+    Retrieves stored price data collected by the real-time collector.
+    Supports filtering by exchange, market type, and time range.
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT, etc.)
+        exchange: Specific exchange or None for all (binance, bybit, okx, kraken, gateio, hyperliquid)
+        market_type: 'futures' or 'spot'
+        minutes: How many minutes of history to retrieve
+        limit: Maximum number of records
+    
+    Returns:
+        XML with historical price data and statistics.
+    
+    Example:
+        "Get last hour of BTC prices from Binance futures" → get_historical_price_data(symbol="BTCUSDT", exchange="binance", minutes=60)
+    """
+    try:
+        logger.info(f"Getting historical prices for {symbol}")
+        result = await get_historical_prices(
+            symbol=symbol,
+            exchange=exchange,
+            market_type=market_type,
+            minutes=minutes,
+            limit=limit
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting historical prices: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HISTORICAL_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_historical_trade_data(
+    symbol: str = "BTCUSDT",
+    exchange: str = None,
+    market_type: str = "futures",
+    minutes: int = 60,
+    side: str = None,
+    limit: int = 500
+) -> str:
+    """
+    Query historical trade data from DuckDB database.
+    
+    Retrieves stored trades with volume analysis. Can filter by
+    buy or sell side to analyze directional flow.
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, SOLUSDT, etc.)
+        exchange: Specific exchange or None for all
+        market_type: 'futures' or 'spot'
+        minutes: How many minutes of history
+        side: Filter by 'buy' or 'sell' (optional, None for all)
+        limit: Maximum number of records
+    
+    Returns:
+        XML with trade data including buy/sell volume stats.
+    
+    Example:
+        "Show BTC buy trades in last hour" → get_historical_trade_data(symbol="BTCUSDT", side="buy", minutes=60)
+    """
+    try:
+        logger.info(f"Getting historical trades for {symbol}")
+        result = await get_historical_trades(
+            symbol=symbol,
+            exchange=exchange,
+            market_type=market_type,
+            minutes=minutes,
+            side=side,
+            limit=limit
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting historical trades: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HISTORICAL_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_historical_funding_data(
+    symbol: str = "BTCUSDT",
+    exchange: str = None,
+    hours: int = 24
+) -> str:
+    """
+    Query historical funding rate data from DuckDB database.
+    
+    Retrieves funding rate history with cumulative funding calculations
+    and annualized rate analysis across exchanges.
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, etc.)
+        exchange: Specific exchange or None for all
+        hours: Hours of history to retrieve
+    
+    Returns:
+        XML with funding rate history and cumulative analysis.
+    
+    Example:
+        "Show BTC funding rate history for last 24 hours" → get_historical_funding_data(symbol="BTCUSDT", hours=24)
+    """
+    try:
+        logger.info(f"Getting historical funding rates for {symbol}")
+        result = await get_historical_funding_rates(
+            symbol=symbol,
+            exchange=exchange,
+            hours=hours
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting historical funding: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HISTORICAL_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_historical_liquidation_data(
+    symbol: str = "BTCUSDT",
+    exchange: str = None,
+    hours: int = 24,
+    min_value: float = 10000
+) -> str:
+    """
+    Query historical liquidation data from DuckDB database.
+    
+    Retrieves liquidation history with long/short breakdown.
+    Essential for identifying market stress and cascade events.
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, etc.)
+        exchange: Specific exchange or None for all
+        hours: Hours of history to retrieve
+        min_value: Minimum liquidation value in USD (default $10,000)
+    
+    Returns:
+        XML with liquidation history and summary statistics.
+    
+    Example:
+        "Show large BTC liquidations over last 24 hours" → get_historical_liquidation_data(symbol="BTCUSDT", hours=24, min_value=100000)
+    """
+    try:
+        logger.info(f"Getting historical liquidations for {symbol}")
+        result = await get_historical_liquidations(
+            symbol=symbol,
+            exchange=exchange,
+            hours=hours,
+            min_value=min_value
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting historical liquidations: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HISTORICAL_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_historical_oi_data(
+    symbol: str = "BTCUSDT",
+    exchange: str = None,
+    hours: int = 24
+) -> str:
+    """
+    Query historical open interest data from DuckDB database.
+    
+    Retrieves OI history to track positioning changes over time.
+    Shows how leverage and market exposure has evolved.
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, etc.)
+        exchange: Specific exchange or None for all
+        hours: Hours of history to retrieve
+    
+    Returns:
+        XML with OI history and change statistics.
+    
+    Example:
+        "Show BTC open interest history" → get_historical_oi_data(symbol="BTCUSDT", hours=24)
+    """
+    try:
+        logger.info(f"Getting historical OI for {symbol}")
+        result = await get_historical_open_interest(
+            symbol=symbol,
+            exchange=exchange,
+            hours=hours
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error getting historical OI: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HISTORICAL_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_database_statistics() -> str:
+    """
+    Get statistics about the stored market data in DuckDB.
+    
+    Shows database size, record counts per table, date ranges,
+    and available symbols/exchanges in the historical data.
+    
+    Returns:
+        XML with database statistics and data inventory.
+    
+    Example:
+        "How much data do we have stored?" → get_database_statistics()
+    """
+    try:
+        logger.info("Getting database statistics")
+        result = await get_database_stats()
+        return result
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="DATABASE_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def query_historical_analytics(
+    symbol: str = "BTCUSDT",
+    query_type: str = "price_ohlc",
+    exchange: str = "binance",
+    market_type: str = "futures",
+    hours: int = 24,
+    aggregation: str = "1h"
+) -> str:
+    """
+    Run advanced analytical queries on historical data.
+    
+    Supports multiple query types for in-depth analysis:
+    - price_ohlc: OHLC candlestick aggregation at custom intervals
+    - volume_profile: Volume distribution by price level
+    - volatility: Rolling volatility analysis
+    - funding_cumulative: Cumulative funding costs
+    - liquidation_cascade: Liquidation cascade detection
+    
+    Args:
+        symbol: Trading pair to analyze
+        query_type: Type of analysis - price_ohlc, volume_profile, volatility, funding_cumulative, liquidation_cascade
+        exchange: Exchange to query
+        market_type: 'futures' or 'spot'
+        hours: Hours of historical data to analyze
+        aggregation: Time bucket ('5m', '15m', '1h', '4h', '1d')
+    
+    Returns:
+        XML with analytical results based on query type.
+    
+    Example:
+        "Generate 1-hour OHLC candles for BTC" → query_historical_analytics(symbol="BTCUSDT", query_type="price_ohlc", aggregation="1h")
+    """
+    try:
+        logger.info(f"Running {query_type} analytics for {symbol}")
+        result = await query_custom_historical(
+            query_type=query_type,
+            symbol=symbol,
+            exchange=exchange,
+            market_type=market_type,
+            hours=hours,
+            aggregation=aggregation
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error running analytics query: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="ANALYTICS_QUERY_FAILED"><message>{str(e)}</message></error>"""
+
+
+# ============================================================================
+# LIVE + HISTORICAL COMBINED MCP TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def get_full_market_snapshot(
+    symbol: str = "BTCUSDT",
+    include_historical: bool = True,
+    historical_minutes: int = 60
+) -> str:
+    """
+    Get comprehensive market snapshot combining LIVE and HISTORICAL data.
+    
+    Combines real-time streaming data with historical context for
+    complete market intelligence including:
+    - Live prices from all exchanges
+    - Live funding rates
+    - Live orderbooks
+    - Historical price statistics (range, volatility)
+    - Historical trade flow (buy/sell volume)
+    - Recent liquidations summary
+    - Market analysis and signals
+    
+    Args:
+        symbol: Trading pair (BTCUSDT, ETHUSDT, etc.)
+        include_historical: Whether to include historical context
+        historical_minutes: Minutes of historical data for context
+    
+    Returns:
+        XML with combined live + historical market intelligence.
+    
+    Example:
+        "Give me full BTC market analysis" → get_full_market_snapshot(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Getting full market snapshot for {symbol}")
+        return await get_market_snapshot_full(
+            symbol=symbol,
+            include_historical=include_historical,
+            historical_minutes=historical_minutes
+        )
+    except Exception as e:
+        logger.error(f"Error getting full snapshot: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="SNAPSHOT_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_price_with_historical_context(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    market_type: str = "futures",
+    historical_minutes: int = 30
+) -> str:
+    """
+    Get current live price with historical price context.
+    
+    Combines the latest live price with historical statistics
+    including OHLC, percentiles, and price change analysis.
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange to query
+        market_type: 'futures' or 'spot'
+        historical_minutes: Minutes of history for context
+    
+    Returns:
+        XML with live price + historical range + change analysis.
+    
+    Example:
+        "What's BTC price now vs last hour?" → get_price_with_historical_context(symbol="BTCUSDT", historical_minutes=60)
+    """
+    try:
+        logger.info(f"Getting price with history for {symbol}")
+        return await get_price_with_history(
+            symbol=symbol,
+            exchange=exchange,
+            market_type=market_type,
+            historical_minutes=historical_minutes
+        )
+    except Exception as e:
+        logger.error(f"Error getting price with history: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="PRICE_HISTORY_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def analyze_funding_arbitrage(
+    symbol: str = "BTCUSDT",
+    historical_hours: int = 24
+) -> str:
+    """
+    Analyze funding rate arbitrage opportunities across exchanges.
+    
+    Combines live funding rates with historical patterns to identify
+    profitable funding arbitrage opportunities (delta-neutral carry).
+    
+    Args:
+        symbol: Trading pair to analyze
+        historical_hours: Hours of funding history to analyze
+    
+    Returns:
+        XML with funding arbitrage opportunities and historical patterns.
+    
+    Example:
+        "Find funding arbitrage opportunities for BTC" → analyze_funding_arbitrage(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Analyzing funding arbitrage for {symbol}")
+        return await get_funding_arbitrage_analysis(
+            symbol=symbol,
+            historical_hours=historical_hours
+        )
+    except Exception as e:
+        logger.error(f"Error analyzing funding arbitrage: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="FUNDING_ANALYSIS_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def get_liquidation_heatmap_analysis(
+    symbol: str = "BTCUSDT",
+    hours: int = 24,
+    price_buckets: int = 20
+) -> str:
+    """
+    Generate liquidation heatmap showing where liquidations occurred by price level.
+    
+    Identifies price zones with heavy liquidation activity, useful for
+    understanding support/resistance and stop-loss clustering.
+    
+    Args:
+        symbol: Trading pair to analyze
+        hours: Hours of liquidation data to include
+        price_buckets: Number of price buckets for the heatmap
+    
+    Returns:
+        XML heatmap of liquidations by price level with intensity.
+    
+    Example:
+        "Show BTC liquidation heatmap" → get_liquidation_heatmap_analysis(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Generating liquidation heatmap for {symbol}")
+        return await get_liquidation_heatmap(
+            symbol=symbol,
+            hours=hours,
+            price_buckets=price_buckets
+        )
+    except Exception as e:
+        logger.error(f"Error generating liquidation heatmap: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="HEATMAP_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def detect_price_anomalies(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    market_type: str = "futures"
+) -> str:
+    """
+    Compare current live price against historical averages to detect anomalies.
+    
+    Uses z-score analysis across multiple timeframes (5m, 15m, 1h, 4h, 24h)
+    to identify significant price deviations that may indicate trading opportunities.
+    
+    Args:
+        symbol: Trading pair to analyze
+        exchange: Exchange to compare
+        market_type: 'futures' or 'spot'
+    
+    Returns:
+        XML comparison with deviation analysis and signals.
+    
+    Example:
+        "Is BTC price unusually high or low right now?" → detect_price_anomalies(symbol="BTCUSDT")
+    """
+    try:
+        logger.info(f"Detecting price anomalies for {symbol}")
+        return await compare_live_vs_historical(
+            symbol=symbol,
+            exchange=exchange,
+            market_type=market_type
+        )
+    except Exception as e:
+        logger.error(f"Error detecting anomalies: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="ANOMALY_DETECTION_FAILED"><message>{str(e)}</message></error>"""
+
+
+@mcp.tool()
+async def list_feature_calculators() -> str:
+    """
+    List all available advanced feature calculators.
+    
+    Shows all registered plugin-based feature calculators with their
+    descriptions, categories, and parameters.
+    
+    Returns:
+        XML listing of all available feature calculators.
+    
+    Example:
+        "What advanced analytics features are available?" → list_feature_calculators()
+    """
+    try:
+        calculators = feature_registry.list_calculators()
+        
+        xml_parts = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            f'<feature_calculators count="{len(calculators)}">',
+        ]
+        
+        # Group by category
+        categories = {}
+        for calc in calculators:
+            cat = calc.get('category', 'general')
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(calc)
+        
+        for cat, calcs in sorted(categories.items()):
+            xml_parts.append(f'  <category name="{cat}">')
+            for calc in calcs:
+                xml_parts.append(f'    <calculator name="{calc["name"]}" version="{calc["version"]}">')
+                xml_parts.append(f'      <description>{calc["description"]}</description>')
+                xml_parts.append(f'      <mcp_tool>calculate_{calc["name"]}</mcp_tool>')
+                xml_parts.append('      <parameters>')
+                for pname, pschema in calc.get('parameters', {}).items():
+                    ptype = pschema.get('type', 'str')
+                    pdefault = pschema.get('default', 'None')
+                    pdesc = pschema.get('description', '')
+                    xml_parts.append(f'        <param name="{pname}" type="{ptype}" default="{pdefault}">{pdesc}</param>')
+                xml_parts.append('      </parameters>')
+                xml_parts.append('    </calculator>')
+            xml_parts.append('  </category>')
+        
+        xml_parts.append('</feature_calculators>')
+        return '\n'.join(xml_parts)
+        
+    except Exception as e:
+        logger.error(f"Error listing feature calculators: {e}", exc_info=True)
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<error type="LIST_FAILED"><message>{str(e)}</message></error>"""
 
 
 # ============================================================================
@@ -5609,6 +6169,29 @@ def main():
     logger.info("    • hyperliquid_full_analysis     - Full analysis + signals")
     logger.info("    • hyperliquid_perpetuals        - All perpetual contracts")
     logger.info("    • hyperliquid_recent_trades     - Trade activity proxy")
+    logger.info("")
+    logger.info("  DUCKDB HISTORICAL DATA TOOLS:")
+    logger.info("    • get_historical_price_data     - Query stored price history")
+    logger.info("    • get_historical_trade_data     - Query stored trade data")
+    logger.info("    • get_historical_funding_data   - Query funding rate history")
+    logger.info("    • get_historical_liquidation_data - Query liquidation history")
+    logger.info("    • get_historical_oi_data        - Query open interest history")
+    logger.info("    • get_database_statistics       - Get database stats and tables")
+    logger.info("    • query_historical_analytics    - Custom OHLC/volatility queries")
+    logger.info("")
+    logger.info("  LIVE + HISTORICAL COMBINED TOOLS:")
+    logger.info("    • get_full_market_snapshot      - Live + historical snapshot")
+    logger.info("    • get_price_with_historical_context - Price with OHLC context")
+    logger.info("    • analyze_funding_arbitrage     - Funding rate arbitrage detection")
+    logger.info("    • get_liquidation_heatmap_analysis - Liquidation distribution")
+    logger.info("    • detect_price_anomalies        - Z-score anomaly detection")
+    logger.info("")
+    logger.info("  ADVANCED FEATURE CALCULATORS (Plugin Framework):")
+    if feature_registry and feature_registry.calculators:
+        for name, calc in feature_registry.calculators.items():
+            logger.info(f"    • calculate_{name:25} - {calc.description}")
+    else:
+        logger.info("    (No feature calculators registered)")
     logger.info("")
     logger.info("  SUPPORTED SYMBOLS: BTCUSDT, ETHUSDT, XRPUSDT, SOLUSDT")
     logger.info("=" * 70)

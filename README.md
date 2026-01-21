@@ -6,7 +6,7 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, arbitrage detection, and advanced analytics**. Connects to 9 exchanges simultaneously via WebSocket, stores data in DuckDB with 504 isolated tables, and provides comprehensive market intelligence.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, arbitrage detection, and advanced analytics**. Connects to 9 exchanges simultaneously via WebSocket, stores data in DuckDB with 504 isolated tables, and provides comprehensive market intelligence through **199 MCP tools**.
 
 ---
 
@@ -15,8 +15,11 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
 1. **Real-Time Data Collection**: Streams live market data from 9 cryptocurrency exchanges
 2. **Cross-Exchange Arbitrage Detection**: Identifies profitable price discrepancies in real-time
 3. **Persistent Storage**: Stores all data in DuckDB with complete isolation per coin/exchange
-4. **Advanced Analytics**: Computes institutional flow, squeeze probability, and smart money signals
-5. **MCP Tools Interface**: Exposes all functionality through AI-assistant-compatible tools
+4. **Historical Analytics**: Query stored DuckDB data for backtesting and analysis
+5. **Live + Historical Fusion**: Combines real-time data with historical context
+6. **Plugin-Based Feature Calculators**: Extensible framework for custom analytics
+7. **Advanced Analytics**: Computes institutional flow, squeeze probability, and smart money signals
+8. **MCP Tools Interface**: Exposes all functionality through 199 AI-assistant-compatible tools
 
 ---
 
@@ -316,13 +319,172 @@ Check health and connectivity of the arbitrage scanner.
 
 ---
 
+## 📊 DuckDB Historical Data Tools
+
+Query the stored historical data in DuckDB using these MCP tools:
+
+| Tool | Description |
+|------|-------------|
+| `get_historical_price_data` | Query stored price history with OHLC aggregation |
+| `get_historical_trade_data` | Query stored trade data with flow analysis |
+| `get_historical_funding_data` | Query funding rate history with patterns |
+| `get_historical_liquidation_data` | Query liquidation history |
+| `get_historical_oi_data` | Query open interest history |
+| `get_database_statistics` | Get database stats and available tables |
+| `query_historical_analytics` | Custom OHLC/volatility/volume profile queries |
+
+### Example: Query Historical Data
+```python
+# Get BTC price history for last 24 hours
+await get_historical_price_data(
+    symbol="BTCUSDT",
+    exchange="binance",
+    hours=24,
+    aggregation="1h"  # 1m, 5m, 15m, 1h, 4h, 1d
+)
+```
+
+---
+
+## 🔀 Live + Historical Combined Tools
+
+Combine real-time data with historical context:
+
+| Tool | Description |
+|------|-------------|
+| `get_full_market_snapshot` | Live prices + historical OHLC context |
+| `get_price_with_historical_context` | Current price with historical stats |
+| `analyze_funding_arbitrage` | Funding rate arbitrage with historical patterns |
+| `get_liquidation_heatmap_analysis` | Liquidation distribution by price level |
+| `detect_price_anomalies` | Z-score anomaly detection vs history |
+
+### Example: Market Snapshot with History
+```python
+# Get BTC market snapshot with 24h historical context
+await get_full_market_snapshot(
+    symbol="BTCUSDT",
+    historical_hours=24
+)
+```
+
+---
+
+## 🔌 Plugin-Based Feature Calculator Framework
+
+### Overview
+
+The Feature Calculator Framework allows you to create custom analytics scripts that automatically become MCP tools. This enables extensible, modular analytics without modifying core code.
+
+### Built-in Calculators
+
+| Calculator | MCP Tool | Description |
+|------------|----------|-------------|
+| **Order Flow Imbalance** | `calculate_order_flow_imbalance` | Detect buying/selling pressure imbalances |
+| **Liquidation Cascade** | `calculate_liquidation_cascade` | Detect cascade patterns and risk |
+| **Funding Arbitrage** | `calculate_funding_arbitrage` | Identify funding rate arbitrage opportunities |
+| **Volatility Regime** | `calculate_volatility_regime` | Detect volatility regimes and transitions |
+
+### Listing Available Calculators
+
+```python
+# Use the MCP tool to list all calculators
+await list_feature_calculators()
+```
+
+### Creating Custom Calculators
+
+To add your own feature calculator:
+
+1. **Create a new Python file** in `src/features/calculators/`:
+
+```python
+# src/features/calculators/my_custom_feature.py
+
+from src.features.base import FeatureCalculator, FeatureResult
+from src.features.utils import generate_signal
+
+class MyCustomCalculator(FeatureCalculator):
+    name = "my_custom_feature"
+    description = "Calculate my custom market feature"
+    category = "custom"
+    version = "1.0.0"
+    
+    async def calculate(
+        self,
+        symbol: str,
+        exchange: str = None,
+        hours: int = 24,
+        **params
+    ) -> FeatureResult:
+        # Your calculation logic here
+        data = {'my_metric': 123.45}
+        
+        signals = []
+        if data['my_metric'] > 100:
+            signals.append(generate_signal(
+                'BULLISH', 0.8,
+                "My custom signal triggered",
+                data
+            ))
+        
+        return self.create_result(
+            symbol=symbol,
+            exchanges=[exchange or 'all'],
+            data=data,
+            signals=signals
+        )
+    
+    def get_parameters(self):
+        return {
+            'symbol': {'type': 'str', 'required': True},
+            'exchange': {'type': 'str', 'default': None},
+            'hours': {'type': 'int', 'default': 24}
+        }
+```
+
+2. **Restart the MCP server** - Your calculator will be auto-discovered!
+
+3. **Use via MCP tool**: `calculate_my_custom_feature`
+
+### Framework Architecture
+
+```
+src/features/
+├── __init__.py           # Package exports
+├── base.py               # FeatureCalculator base class & FeatureResult
+├── registry.py           # Auto-discovery & MCP registration
+├── utils.py              # Shared utilities (stats, signals, etc.)
+└── calculators/          # Your calculator plugins go here
+    ├── __init__.py
+    ├── order_flow_imbalance.py
+    ├── liquidation_cascade.py
+    ├── funding_arbitrage.py
+    └── volatility_regime.py
+```
+
+### Available Utilities in `src/features/utils.py`
+
+| Function | Description |
+|----------|-------------|
+| `calculate_zscore()` | Calculate z-score |
+| `rolling_mean()` | Rolling mean calculation |
+| `exponential_moving_average()` | EMA calculation |
+| `calculate_volatility()` | Annualized volatility |
+| `calculate_vwap()` | Volume-weighted average price |
+| `detect_large_trades()` | Identify whale trades |
+| `calculate_orderbook_imbalance()` | Orderbook imbalance ratio |
+| `generate_signal()` | Create standardized signals |
+| `classify_market_regime()` | Classify market conditions |
+
+---
+
 ## 📁 Project Structure
 
 ```
 mcp-options-order-flow-server/
 ├── src/
 │   ├── __init__.py
-│   ├── mcp_server.py                    # Main MCP server
+│   ├── mcp_server.py                    # Main MCP server (199 tools)
 │   │
 │   ├── storage/                          # Data Layer
 │   │   ├── direct_exchange_client.py    # WebSocket connections to 9 exchanges
@@ -347,8 +509,22 @@ mcp-options-order-flow-server/
 │   │   ├── streaming_analyzer.py        # Real-time streaming analysis
 │   │   └── feature_engine.py            # Feature computation
 │   │
+│   ├── features/                         # Plugin Feature Framework (NEW)
+│   │   ├── __init__.py                  # Package exports
+│   │   ├── base.py                      # FeatureCalculator base class
+│   │   ├── registry.py                  # Auto-discovery & MCP registration
+│   │   ├── utils.py                     # Shared utilities
+│   │   └── calculators/                 # Calculator plugins
+│   │       ├── __init__.py
+│   │       ├── order_flow_imbalance.py  # Order flow analysis
+│   │       ├── liquidation_cascade.py   # Cascade detection
+│   │       ├── funding_arbitrage.py     # Funding arb finder
+│   │       └── volatility_regime.py     # Volatility regimes
+│   │
 │   ├── tools/                            # MCP Tools
 │   │   ├── crypto_arbitrage_tool.py     # Arbitrage detection tools
+│   │   ├── duckdb_historical_tools.py   # DuckDB historical queries (NEW)
+│   │   ├── live_historical_tools.py     # Live + historical combined (NEW)
 │   │   ├── binance_futures_tools.py     # Binance-specific tools
 │   │   ├── binance_spot_tools.py        # Binance Spot tools
 │   │   ├── bybit_tools.py               # Bybit tools
@@ -564,7 +740,17 @@ CREATE TABLE {symbol}_{exchange}_futures_liquidations (
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Current Version: 2.0.0
+### Current Version: 2.1.0
+
+**New in 2.1.0:**
+- ✅ DuckDB Historical Query Tools (7 new tools)
+- ✅ Live + Historical Combined Tools (5 new tools)
+- ✅ Plugin-Based Feature Calculator Framework
+- ✅ 4 Built-in Feature Calculators
+- ✅ Auto-discovery and MCP registration
+- ✅ Total: **199 MCP Tools**
+
+**Version 2.0.0:**
 - ✅ 9 exchange support (Binance, Bybit, OKX, Kraken, Gate.io, Hyperliquid, Pyth)
 - ✅ 504 isolated DuckDB tables
 - ✅ Real-time arbitrage detection
