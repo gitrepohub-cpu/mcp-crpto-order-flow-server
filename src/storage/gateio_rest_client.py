@@ -144,6 +144,19 @@ class GateioRESTClient:
             async with session.get(url, params=params) as response:
                 if response.status == 200:
                     return await response.json()
+                elif response.status == 429:
+                    # Rate limited - retry with backoff
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Gate.io rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded", "code": 429}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Gate.io rate limited, waiting 2s... (retry {self._retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._request(endpoint, params)
+                    self._retry_count = 0
+                    return result
                 else:
                     error_text = await response.text()
                     logger.warning(f"Gate.io API error {response.status}: {error_text}")

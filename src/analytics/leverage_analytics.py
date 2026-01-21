@@ -297,7 +297,7 @@ class LeverageAnalytics:
                 short_value += value
             
             # Cluster by price bins (1% bins)
-            if price > 0:
+            if price > 0 and current_price > 0:
                 bin_price = round(price / (current_price * 0.01)) * (current_price * 0.01)
                 if bin_price not in price_clusters:
                     price_clusters[bin_price] = {"long": 0, "short": 0, "count": 0}

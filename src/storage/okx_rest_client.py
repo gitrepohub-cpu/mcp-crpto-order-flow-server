@@ -156,6 +156,20 @@ class OKXRESTClient:
         
         try:
             async with session.get(url, params=params, timeout=10) as response:
+                # Handle rate limiting
+                if response.status == 429:
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("OKX rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded", "code": "429"}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"OKX rate limited, waiting 2s... (retry {self._retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._request(endpoint, params, cache_ttl)
+                    self._retry_count = 0
+                    return result
+                
                 data = await response.json()
                 
                 # OKX returns {"code": "0", "data": [...], "msg": ""}

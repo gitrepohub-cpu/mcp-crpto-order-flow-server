@@ -198,7 +198,8 @@ class AlphaSignalEngine:
         negative_components = sum(1 for v in components.values() if v < -10)
         total_components = len(components)
         
-        agreement = max(positive_components, negative_components) / total_components
+        # Guard against division by zero
+        agreement = max(positive_components, negative_components) / total_components if total_components > 0 else 0
         result["confidence"] = round(agreement * 100, 1)
         
         # Trend from history

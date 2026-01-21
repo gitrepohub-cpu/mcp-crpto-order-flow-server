@@ -11,6 +11,7 @@ import logging
 import os
 from typing import Optional, List, Dict
 from datetime import datetime
+from xml.sax.saxutils import escape as xml_escape
 
 # Determine which client to use
 USE_DIRECT_MODE = os.environ.get("USE_DIRECT_EXCHANGES", "true").lower() in ("true", "1", "yes")
@@ -588,14 +589,14 @@ def _format_orderbooks_xml(orderbooks: Dict) -> str:
     lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<orderbooks>']
     
     for symbol, exchanges in orderbooks.items():
-        lines.append(f'  <symbol name="{symbol}">')
+        lines.append(f'  <symbol name="{xml_escape(str(symbol))}">')
         for exchange, data in exchanges.items():
             spread = data.get('spread', 0)
             spread_pct = data.get('spread_pct', 0)
             bid_depth = data.get('bid_depth', 0)
             ask_depth = data.get('ask_depth', 0)
             
-            lines.append(f'    <exchange name="{exchange}">')
+            lines.append(f'    <exchange name="{xml_escape(str(exchange))}">')
             lines.append(f'      <spread>${spread:.2f}</spread>')
             lines.append(f'      <spread_pct>{spread_pct:.4f}%</spread_pct>')
             lines.append(f'      <bid_depth>{bid_depth:.4f}</bid_depth>')

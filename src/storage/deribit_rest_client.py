@@ -137,6 +137,20 @@ class DeribitRESTClient:
         
         try:
             async with session.get(url, params=params) as response:
+                # Handle rate limiting
+                if response.status == 429:
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Deribit rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded"}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Deribit rate limited, waiting 2s... (retry {self._retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._request(method, params)
+                    self._retry_count = 0
+                    return result
+                
                 data = await response.json()
                 
                 if response.status != 200:

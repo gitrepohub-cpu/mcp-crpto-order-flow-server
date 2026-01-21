@@ -158,9 +158,18 @@ class BinanceFuturesREST:
                 if response.status == 200:
                     return await response.json()
                 elif response.status == 429:
-                    logger.warning("Binance rate limit hit, waiting 60s...")
+                    # Rate limit - only retry up to 3 times
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Binance rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return None
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Binance rate limit hit, waiting 60s... (retry {self._retry_count}/3)")
                     await asyncio.sleep(60)
-                    return await self._request(endpoint, params)
+                    result = await self._request(endpoint, params)
+                    self._retry_count = 0
+                    return result
                 else:
                     error_text = await response.text()
                     logger.error(f"Binance API error {response.status}: {error_text}")

@@ -433,3 +433,316 @@ candles[symbol][exchange] = {
 | Trades | Real-time | Every trade |
 | Candles | 1 minute | Kline updates |
 | Liquidations | Real-time | When they occur |
+
+---
+
+## 📋 DuckDB Column Schemas (For Storage)
+
+### 1️⃣ prices (Real-time price ticks)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time of price update |
+| `symbol` | VARCHAR(20) | BTCUSDT, ETHUSDT, etc. |
+| `exchange` | VARCHAR(30) | binance_futures, bybit_spot, etc. |
+| `mid_price` | DOUBLE | (bid + ask) / 2 |
+| `bid_price` | DOUBLE | Best bid available |
+| `ask_price` | DOUBLE | Best ask available |
+| `spread_bps` | DOUBLE | Spread in basis points (auto-calculated) |
+
+### 2️⃣ orderbooks (Depth of Market L2)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Source exchange |
+| `bid_1_price` to `bid_10_price` | DOUBLE | Top 10 bid prices |
+| `bid_1_qty` to `bid_10_qty` | DOUBLE | Top 10 bid quantities |
+| `ask_1_price` to `ask_10_price` | DOUBLE | Top 10 ask prices |
+| `ask_1_qty` to `ask_10_qty` | DOUBLE | Top 10 ask quantities |
+| `total_bid_depth` | DOUBLE | Sum of all bid quantities |
+| `total_ask_depth` | DOUBLE | Sum of all ask quantities |
+| `bid_ask_ratio` | DOUBLE | bid_depth / ask_depth (>1 = bullish) |
+| `spread` | DOUBLE | ask_1 - bid_1 |
+| `spread_pct` | DOUBLE | Spread as percentage |
+
+### 3️⃣ trades (Individual executions)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | Trade execution time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Exchange where executed |
+| `price` | DOUBLE | Execution price |
+| `quantity` | DOUBLE | Trade size (base asset) |
+| `quote_value` | DOUBLE | price × quantity (USD value) |
+| `side` | VARCHAR(4) | 'buy' or 'sell' |
+| `is_buyer_maker` | BOOLEAN | true = taker sold |
+
+### 4️⃣ mark_prices (Futures mark & index)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Futures exchange |
+| `mark_price` | DOUBLE | Futures mark price |
+| `index_price` | DOUBLE | Spot index reference |
+| `basis` | DOUBLE | mark - index |
+| `basis_pct` | DOUBLE | (mark-index)/index × 100 |
+| `funding_rate` | DOUBLE | Current 8h funding rate |
+| `annualized_rate` | DOUBLE | funding × 3 × 365 × 100 |
+
+### 5️⃣ funding_rates (8-hour funding)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Futures exchange |
+| `funding_rate` | DOUBLE | Raw rate (e.g., 0.0001) |
+| `funding_pct` | DOUBLE | Rate as percentage |
+| `annualized_pct` | DOUBLE | Annualized return % |
+| `next_funding_ts` | TIMESTAMP | When next funding occurs |
+
+### 6️⃣ open_interest (Position sizing)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Futures exchange |
+| `open_interest` | DOUBLE | Number of contracts |
+| `open_interest_usd` | DOUBLE | USD notional value |
+
+### 7️⃣ ticker_24h (Daily statistics)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | UTC time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Exchange |
+| `volume_24h` | DOUBLE | Base asset volume |
+| `quote_volume_24h` | DOUBLE | Quote (USD) volume |
+| `high_24h` | DOUBLE | 24h high price |
+| `low_24h` | DOUBLE | 24h low price |
+| `price_change_pct` | DOUBLE | 24h % change |
+| `trade_count_24h` | INTEGER | Number of trades |
+
+### 8️⃣ candles (OHLCV 1-minute)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `open_time` | TIMESTAMP | Candle start time |
+| `close_time` | TIMESTAMP | Candle end time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Exchange |
+| `open` | DOUBLE | Open price |
+| `high` | DOUBLE | High price |
+| `low` | DOUBLE | Low price |
+| `close` | DOUBLE | Close price |
+| `volume` | DOUBLE | Base volume |
+| `quote_volume` | DOUBLE | Quote volume |
+| `trade_count` | INTEGER | Number of trades |
+| `taker_buy_volume` | DOUBLE | Taker buy volume |
+| `taker_buy_pct` | DOUBLE | Buy vol / total vol × 100 |
+
+### 9️⃣ liquidations (Forced closures)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | Liquidation time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `exchange` | VARCHAR(30) | Exchange |
+| `side` | VARCHAR(5) | 'long' or 'short' |
+| `price` | DOUBLE | Liquidation price |
+| `quantity` | DOUBLE | Position size |
+| `value_usd` | DOUBLE | USD value of liquidation |
+
+### 🔟 arbitrage_opportunities (Cross-exchange spreads)
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Auto-increment primary key |
+| `timestamp` | TIMESTAMP | Detection time |
+| `symbol` | VARCHAR(20) | Trading pair |
+| `buy_exchange` | VARCHAR(30) | Where to buy |
+| `sell_exchange` | VARCHAR(30) | Where to sell |
+| `buy_price` | DOUBLE | Buy price |
+| `sell_price` | DOUBLE | Sell price |
+| `spread_pct` | DOUBLE | Profit percentage |
+| `est_profit_usd` | DOUBLE | Est. profit per $10k trade |
+
+---
+
+## 🔄 Storage & Backup Workflow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           DATA FLOW ARCHITECTURE                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  1. REAL-TIME COLLECTION                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  9 Exchanges → WebSocket Streams → DirectExchangeClient (Python)       │ │
+│  │                                                                          │ │
+│  │  ~76,000 data points/minute across all streams                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                              │                                                │
+│                              ▼                                                │
+│  2. IN-MEMORY BUFFERING (5-second batches)                                    │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Buffer Manager: Accumulate 1000 records or 5 seconds                   │ │
+│  │  • Deduplicate                                                           │ │
+│  │  • Validate                                                              │ │
+│  │  • Format for batch insert                                               │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                              │                                                │
+│                              ▼                                                │
+│  3. LOCAL STORAGE (DuckDB)                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  market_data.duckdb (~5 GB/day uncompressed, ~1 GB compressed)          │ │
+│  │                                                                          │ │
+│  │  ┌─────────┐ ┌──────────┐ ┌────────┐ ┌──────────────┐ ┌───────────┐   │ │
+│  │  │ prices  │ │orderbooks│ │ trades │ │ mark_prices  │ │funding_rts│   │ │
+│  │  └─────────┘ └──────────┘ └────────┘ └──────────────┘ └───────────┘   │ │
+│  │  ┌───────────────┐ ┌──────────┐ ┌─────────┐ ┌─────────────────────┐   │ │
+│  │  │ open_interest │ │ candles  │ │ticker24h│ │    liquidations     │   │ │
+│  │  └───────────────┘ └──────────┘ └─────────┘ └─────────────────────┘   │ │
+│  │                                                                          │ │
+│  │  Retention: 7 days raw data locally                                      │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                              │                                                │
+│                              ▼ (Daily at midnight UTC)                        │
+│  4. CLOUD BACKUP (Backblaze B2)                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Export to Parquet (ZSTD compression) → Upload to B2                    │ │
+│  │                                                                          │ │
+│  │  Bucket: mcp-market-data/                                                │ │
+│  │  ├── raw/2026/01/20/                                                     │ │
+│  │  │   ├── prices_2026-01-20.parquet (~50 MB compressed)                  │ │
+│  │  │   ├── orderbooks_2026-01-20.parquet (~80 MB compressed)              │ │
+│  │  │   ├── trades_2026-01-20.parquet (~30 MB compressed)                  │ │
+│  │  │   └── ... (all tables)                                                │ │
+│  │  └── aggregated/2026/01/                                                 │ │
+│  │      ├── candles_1h_2026-01.parquet                                      │ │
+│  │      └── daily_summary_2026-01.parquet                                   │ │
+│  │                                                                          │ │
+│  │  Cost: ~$2.50/month for 500 GB storage                                   │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧮 Advanced Calculations from Stored Data
+
+### Buy/Sell Signal Generation Pipeline
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                      COMPOSITE BUY/SELL SIGNAL ALGORITHM                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  INPUT: Symbol (e.g., BTCUSDT)                                               │
+│  OUTPUT: Score (-100 to +100) + Signal (BUY/SELL/NEUTRAL)                    │
+│                                                                               │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 1: Order Flow Imbalance (OFI)                    Weight: 25% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: Compare bid depth changes vs ask depth changes                  │  │
+│  │  Data Source: orderbooks table                                          │  │
+│  │  Signal: +25 (buyers aggressive) to -25 (sellers aggressive)            │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 2: RSI (14-period)                               Weight: 20% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: Calculate from candles table close prices                       │  │
+│  │  Data Source: candles table                                             │  │
+│  │  Signal: RSI < 30 = +20 (oversold), RSI > 70 = -20 (overbought)        │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 3: Funding Rate                                  Weight: 15% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: Get annualized funding rate from funding_rates table            │  │
+│  │  Data Source: funding_rates table                                       │  │
+│  │  Signal: Rate > 30% = -15 (contrarian short), Rate < -10% = +15         │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 4: OI + Price Divergence                         Weight: 20% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: JOIN open_interest with prices, calculate correlation           │  │
+│  │  Data Source: open_interest + prices tables                             │  │
+│  │  Signals:                                                               │  │
+│  │    • OI↑ + Price↑ = New longs entering (+20)                           │  │
+│  │    • OI↓ + Price↑ = Short squeeze (+10)                                │  │
+│  │    • OI↑ + Price↓ = New shorts entering (-20)                          │  │
+│  │    • OI↓ + Price↓ = Long capitulation (neutral, reversal pending)      │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 5: Liquidation Sentiment                         Weight: 10% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: Sum recent liquidations by side                                 │  │
+│  │  Data Source: liquidations table                                        │  │
+│  │  Signal: Long liqs cascade = +10 (bottom), Short liqs = -10             │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  INDICATOR 6: Arbitrage Spread                              Weight: 10% │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Query: Get max arbitrage opportunity for symbol                        │  │
+│  │  Data Source: arbitrage_opportunities table                             │  │
+│  │  Signal: High spread = market dislocation, direction depends on context │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                        │
+│                                      ▼                                        │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │                         FINAL SIGNAL                                    │  │
+│  │  ─────────────────────────────────────────────────────────────────────  │  │
+│  │  Total Score = Sum of all weighted indicators                           │  │
+│  │                                                                          │  │
+│  │  Score > +50  →  🟢🟢 STRONG BUY                                        │  │
+│  │  Score +20 to +50  →  🟢 BUY                                            │  │
+│  │  Score -20 to +20  →  ⚪ NEUTRAL                                        │  │
+│  │  Score -50 to -20  →  🔴 SELL                                           │  │
+│  │  Score < -50  →  🔴🔴 STRONG SELL                                       │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 Dashboard Visualization Components
+
+| Component | Data Source | Update Rate | Visual Type |
+|-----------|-------------|-------------|-------------|
+| **Buy/Sell Signal** | Composite algorithm | 5 sec | Gauge + Score |
+| **Price Chart** | candles | 1 min | Candlestick |
+| **Order Flow Heatmap** | orderbooks | 5 sec | Bid/Ask depth chart |
+| **Liquidation Map** | liquidations | Real-time | Timeline + Size bubbles |
+| **Funding Rate Tracker** | funding_rates | 8 hr | Bar chart |
+| **OI vs Price** | open_interest + prices | 1 min | Dual-axis line chart |
+| **Arbitrage Table** | arbitrage_opportunities | Real-time | Sortable table |
+| **Volume Profile** | trades | 1 min | Horizontal bar chart |
+
+---
+
+## 💰 Storage Cost Summary
+
+| Timeframe | Local (DuckDB) | Cloud (Backblaze B2) |
+|-----------|----------------|----------------------|
+| Daily | ~1 GB compressed | ~200 MB (Parquet ZSTD) |
+| Weekly | ~7 GB | ~1.4 GB |
+| Monthly | ~30 GB | ~6 GB |
+| **Cost** | Free (local disk) | **~$2.50/month** |
+
+**Your 30GB HP Elite x2 G4 Setup:**
+- Keep 7 days raw data locally (~7 GB)
+- Daily upload to Backblaze B2 for long-term history
+- Query historical data from cloud as needed

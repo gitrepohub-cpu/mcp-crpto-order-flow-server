@@ -262,13 +262,15 @@ class StreamingAnalyzer:
         
         # Aggregate stats
         if all_prices:
+            min_price = min(all_prices)
+            start_price = all_prices[0]
             return {
-                "start_price": all_prices[0],
+                "start_price": start_price,
                 "end_price": all_prices[-1],
                 "high": max(all_prices),
-                "low": min(all_prices),
-                "range_pct": round(((max(all_prices) - min(all_prices)) / min(all_prices)) * 100, 4),
-                "change_pct": round(((all_prices[-1] - all_prices[0]) / all_prices[0]) * 100, 4),
+                "low": min_price,
+                "range_pct": round(((max(all_prices) - min_price) / min_price) * 100, 4) if min_price > 0 else 0,
+                "change_pct": round(((all_prices[-1] - start_price) / start_price) * 100, 4) if start_price > 0 else 0,
                 "direction": "UP" if all_prices[-1] > all_prices[0] else "DOWN" if all_prices[-1] < all_prices[0] else "FLAT",
                 "volatility": round(statistics.stdev(all_prices), 4) if len(all_prices) > 1 else 0,
                 "price_samples": len(all_prices),
@@ -350,9 +352,16 @@ class StreamingAnalyzer:
             asks = ob.get("asks", [])
             
             for bid in bids[:10]:
-                total_bid_depth += bid[0] * bid[1] if len(bid) >= 2 else 0
+                # Handle both list format [price, qty] and dict format {"price": x, "size": y}
+                if isinstance(bid, (list, tuple)) and len(bid) >= 2:
+                    total_bid_depth += float(bid[0]) * float(bid[1])
+                elif isinstance(bid, dict):
+                    total_bid_depth += float(bid.get("price", 0)) * float(bid.get("size", bid.get("qty", 0)))
             for ask in asks[:10]:
-                total_ask_depth += ask[0] * ask[1] if len(ask) >= 2 else 0
+                if isinstance(ask, (list, tuple)) and len(ask) >= 2:
+                    total_ask_depth += float(ask[0]) * float(ask[1])
+                elif isinstance(ask, dict):
+                    total_ask_depth += float(ask.get("price", 0)) * float(ask.get("size", ask.get("qty", 0)))
         
         imbalance = (total_bid_depth - total_ask_depth) / (total_bid_depth + total_ask_depth) if (total_bid_depth + total_ask_depth) > 0 else 0
         

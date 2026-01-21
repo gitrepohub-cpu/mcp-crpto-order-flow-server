@@ -143,6 +143,20 @@ class KrakenRESTClient:
         
         try:
             async with session.get(url, params=params) as response:
+                if response.status == 429:
+                    # Rate limited - retry with backoff
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Kraken rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded"}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Kraken rate limited, waiting 2s... (retry {self._retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._request_spot(endpoint, params)
+                    self._retry_count = 0
+                    return result
+                
                 data = await response.json()
                 
                 if data.get("error") and len(data["error"]) > 0:
@@ -173,6 +187,20 @@ class KrakenRESTClient:
         
         try:
             async with session.get(url, params=params) as response:
+                if response.status == 429:
+                    # Rate limited - retry with backoff
+                    retry_count = getattr(self, '_futures_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Kraken Futures rate limit hit 3 times, giving up")
+                        self._futures_retry_count = 0
+                        return {"error": "Rate limit exceeded"}
+                    self._futures_retry_count = retry_count + 1
+                    logger.warning(f"Kraken Futures rate limited, waiting 2s... (retry {self._futures_retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._request_futures(endpoint, params, base_url)
+                    self._futures_retry_count = 0
+                    return result
+                
                 data = await response.json()
                 
                 # Futures API uses different error format

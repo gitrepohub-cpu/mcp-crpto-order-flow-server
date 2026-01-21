@@ -134,6 +134,19 @@ class HyperliquidRESTClient:
             async with session.post(url, json=data) as response:
                 if response.status == 200:
                     return await response.json()
+                elif response.status == 429:
+                    # Rate limited - retry with backoff
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Hyperliquid rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded", "code": 429}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Hyperliquid rate limited, waiting 2s... (retry {self._retry_count}/3)")
+                    await asyncio.sleep(2)
+                    result = await self._post_info(request_type, payload)
+                    self._retry_count = 0
+                    return result
                 else:
                     error_text = await response.text()
                     logger.warning(f"Hyperliquid API error {response.status}: {error_text}")

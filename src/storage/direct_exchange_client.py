@@ -633,11 +633,14 @@ class DirectExchangeClient:
         url = "wss://ws.okx.com:8443/ws/v5/public"
         
         # OKX uses different symbol format
+        # Note: Some meme coins may not be available on OKX - they'll silently be ignored
         okx_symbols = {
             "BTCUSDT": "BTC-USDT-SWAP",
             "ETHUSDT": "ETH-USDT-SWAP", 
             "SOLUSDT": "SOL-USDT-SWAP",
-            "XRPUSDT": "XRP-USDT-SWAP"
+            "XRPUSDT": "XRP-USDT-SWAP",
+            "ARUSDT": "AR-USDT-SWAP",
+            # BRETT, POPCAT, WIF, PNUT not available on OKX Futures
         }
         
         async with websockets.connect(url, ping_interval=20, ping_timeout=10) as ws:
@@ -660,7 +663,8 @@ class DirectExchangeClient:
                 "BTCUSDT": "BTC-USDT",
                 "ETHUSDT": "ETH-USDT", 
                 "SOLUSDT": "SOL-USDT",
-                "XRPUSDT": "XRP-USDT"
+                "XRPUSDT": "XRP-USDT",
+                "ARUSDT": "AR-USDT",
             }
             for idx_inst in okx_index_symbols.values():
                 args.append({"channel": "index-tickers", "instId": idx_inst})
@@ -2305,8 +2309,16 @@ class DirectExchangeClient:
                 if active_sources:
                     prices_per_symbol[sym] = active_sources
             
+            # Determine health status: healthy >= 5, degraded >= 2, unhealthy < 2
+            if connected_count >= 5:
+                health_status = "healthy"
+            elif connected_count >= 2:
+                health_status = "degraded"
+            else:
+                health_status = "unhealthy"
+            
             return {
-                "status": "healthy" if connected_count > 0 else "unhealthy",
+                "status": health_status,
                 "connected": connected_count > 0,
                 "mode": "direct_exchange",
                 "exchanges": connected_exchanges,
@@ -2331,8 +2343,17 @@ _direct_client: Optional[DirectExchangeClient] = None
 _client_lock = asyncio.Lock()
 
 
+async def get_direct_client_async() -> DirectExchangeClient:
+    """Get or create the singleton direct client (async version - thread safe)."""
+    global _direct_client
+    async with _client_lock:
+        if _direct_client is None:
+            _direct_client = DirectExchangeClient()
+        return _direct_client
+
+
 def get_direct_client() -> DirectExchangeClient:
-    """Get or create the singleton direct client."""
+    """Get or create the singleton direct client (sync version - use async version if possible)."""
     global _direct_client
     if _direct_client is None:
         _direct_client = DirectExchangeClient()

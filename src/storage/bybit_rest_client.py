@@ -166,10 +166,18 @@ class BybitRESTClient:
                 data = await response.json()
                 
                 if response.status == 429:
-                    # Rate limited, wait and retry
-                    logger.warning("Rate limited by Bybit, waiting 1 second...")
+                    # Rate limited - only retry up to 3 times
+                    retry_count = getattr(self, '_retry_count', 0)
+                    if retry_count >= 3:
+                        logger.error("Bybit rate limit hit 3 times, giving up")
+                        self._retry_count = 0
+                        return {"error": "Rate limit exceeded", "retCode": 429}
+                    self._retry_count = retry_count + 1
+                    logger.warning(f"Rate limited by Bybit, waiting 1 second... (retry {self._retry_count}/3)")
                     await asyncio.sleep(1)
-                    return await self._request(endpoint, params, use_cache, cache_ttl)
+                    result = await self._request(endpoint, params, use_cache, cache_ttl)
+                    self._retry_count = 0
+                    return result
                 
                 if data.get("retCode") != 0:
                     logger.error(f"Bybit API error: {data.get('retMsg', 'Unknown error')}")

@@ -93,3 +93,7 @@ dump.rdb
 # Editor temporary files
 .*.swp
 .*.swo
+# Data files (DuckDB databases)
+data/
+*.duckdb
+*.duckdb.wal
