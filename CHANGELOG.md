@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-01-21
+
+### Added
+- **Time Series Analytics Engine (Kats-equivalent)**
+  - Custom `TimeSeriesEngine` with statsmodels, scipy, scikit-learn backend
+  - `TimeSeriesData` class supporting institutional calculations with timestamps
+  - Multiple forecasting models (ARIMA, Exponential Smoothing, Theta)
+  - Anomaly detection methods (Z-score, IQR, Isolation Forest, CUSUM)
+  - Change point detection (CUSUM, Binary Segmentation)
+  - Feature extraction (40+ statistical features including Hurst exponent, sample entropy)
+  - Seasonality analysis with FFT and decomposition
+  - Market regime detection with transition matrices
+
+- **7 New Time Series Feature Calculators**
+  - `calculate_price_forecast` - Multi-model price forecasting with confidence intervals
+  - `calculate_anomaly_detection` - Multi-method anomaly detection with ensemble consensus
+  - `calculate_change_point_detection` - Structural break detection
+  - `calculate_feature_extraction` - 40+ statistical feature extraction for ML
+  - `calculate_regime_detection` - Market regime classification
+  - `calculate_seasonality_analysis` - Seasonal pattern and trend decomposition
+  - `calculate_funding_forecast` - Funding rate forecasting with arbitrage signals
+
+### Changed
+- Total feature calculators increased from 4 to **11**
+- Updated dependencies: statsmodels>=0.14.0, scipy>=1.10.0, scikit-learn>=1.0.0
+- Updated `src/analytics/__init__.py` with TimeSeriesEngine exports
+- Version bump to 2.2.0
+
+### Technical
+- `TimeSeriesEngine` singleton pattern for performance
+- `ForecastResult`, `AnomalyResult`, `ChangePointResult`, `RegimeResult` dataclasses
+- `MarketRegime` enum for regime classification
+- All calculators integrate with existing `FeatureCalculator` plugin framework
+- Designed for future institutional calculations with timestamp support
+
+---
+
 ## [2.1.0] - 2025-01-21
 
 ### Added
