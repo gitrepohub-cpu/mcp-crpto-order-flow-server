@@ -6,7 +6,7 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, arbitrage detection, and advanced analytics**. Connects to 9 exchanges simultaneously via WebSocket, stores data in DuckDB with 504 isolated tables, and provides comprehensive market intelligence through **199 MCP tools**.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, arbitrage detection, and advanced analytics**. Connects to 9 exchanges simultaneously via WebSocket, stores data in DuckDB with 504 isolated tables, and provides comprehensive market intelligence through **206 MCP tools** including a **Kats-equivalent Time Series Analytics Engine**.
 
 ---
 
@@ -17,9 +17,10 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
 3. **Persistent Storage**: Stores all data in DuckDB with complete isolation per coin/exchange
 4. **Historical Analytics**: Query stored DuckDB data for backtesting and analysis
 5. **Live + Historical Fusion**: Combines real-time data with historical context
-6. **Plugin-Based Feature Calculators**: Extensible framework for custom analytics
-7. **Advanced Analytics**: Computes institutional flow, squeeze probability, and smart money signals
-8. **MCP Tools Interface**: Exposes all functionality through 199 AI-assistant-compatible tools
+6. **Plugin-Based Feature Calculators**: Extensible framework for custom analytics (11 calculators)
+7. **Time Series Analytics Engine**: Kats-equivalent forecasting, anomaly detection, regime detection
+8. **Advanced Analytics**: Computes institutional flow, squeeze probability, and smart money signals
+9. **MCP Tools Interface**: Exposes all functionality through 206 AI-assistant-compatible tools
 
 ---
 
@@ -307,8 +308,7 @@ Check health and connectivity of the arbitrage scanner.
 | **Layer 2** | `leverage_analytics.py` | Funding rate analysis, OI changes, liquidation tracking |
 | **Layer 3** | `cross_exchange_analytics.py` | Cross-exchange spreads, lead-lag relationships |
 | **Layer 4** | `regime_analytics.py` | Market regime detection (trending/ranging/volatile) |
-| **Layer 5** | `alpha_signals.py` | Composite signals, institutional pressure, squeeze probability |
-| **Engine** | `streaming_analyzer.py` | Real-time streaming analysis with configurable windows |
+| **Layer 5** | `alpha_signals.py` | Composite signals, institutional pressure, squeeze probability || **Layer 6** | `timeseries_engine.py` | **Time Series Analytics** - Forecasting, anomaly detection, seasonality || **Engine** | `streaming_analyzer.py` | Real-time streaming analysis with configurable windows |
 
 ### Alpha Signals Computed
 
@@ -316,6 +316,158 @@ Check health and connectivity of the arbitrage scanner.
 2. **Squeeze Probability Model**: Predicts potential short/long squeezes
 3. **Smart Money Absorption**: Identifies smart money accumulation/distribution
 4. **Composite Signal**: Combined actionable trading signal
+
+---
+
+## 🧠 Time Series Analytics Engine (Kats-Equivalent)
+
+A comprehensive time series analysis engine providing Facebook Kats-equivalent functionality using `statsmodels`, `scipy`, and `scikit-learn`. Designed to work with institutional calculations that have timestamps.
+
+### Core Components
+
+| Component | Class | Description |
+|-----------|-------|-------------|
+| **Data Container** | `TimeSeriesData` | Standard container compatible with institutional calculations |
+| **Forecast Results** | `ForecastResult` | Forecasts with confidence intervals |
+| **Anomaly Results** | `AnomalyResult` | Anomaly detection outputs |
+| **Change Points** | `ChangePointResult` | Structural break detection results |
+| **Regime Results** | `RegimeResult` | Market regime classification |
+| **Regime Types** | `MarketRegime` | Enum: TRENDING_UP/DOWN, RANGING, HIGH/LOW_VOLATILITY, BREAKOUT, BREAKDOWN |
+
+### Capabilities
+
+#### 🔮 Forecasting Models
+| Model | Method | Description |
+|-------|--------|-------------|
+| **ARIMA** | `forecast_arima()` | AutoRegressive Integrated Moving Average |
+| **Exponential Smoothing** | `forecast_exponential_smoothing()` | Holt-Winters with trend/seasonality |
+| **Theta** | `forecast_theta()` | Theta method for trend extrapolation |
+| **Auto-Selection** | `auto_forecast()` | Automatically selects best model |
+
+#### 🚨 Anomaly Detection Methods
+| Method | Function | Description |
+|--------|----------|-------------|
+| **Z-Score** | `detect_anomalies_zscore()` | Statistical z-score based detection |
+| **IQR** | `detect_anomalies_iqr()` | Interquartile range method |
+| **Isolation Forest** | `detect_anomalies_isolation_forest()` | ML-based outlier detection |
+| **CUSUM** | `detect_anomalies_cusum()` | Cumulative sum control chart |
+
+#### 📍 Change Point Detection
+| Method | Function | Description |
+|--------|----------|-------------|
+| **CUSUM** | `detect_change_points_cusum()` | Cumulative sum change detection |
+| **Binary Segmentation** | `detect_change_points_binary_segmentation()` | Segment-based detection |
+
+#### 📊 Feature Extraction (40+ Features)
+| Category | Features |
+|----------|----------|
+| **Statistical** | mean, std, var, skew, kurtosis, median, q25, q75, iqr, min, max, range |
+| **Trend** | trend_slope, trend_r2, direction_changes, total_return, cagr |
+| **Volatility** | volatility, mean_abs_change, max_abs_change, range_to_mean_ratio |
+| **Autocorrelation** | autocorr_lag1, autocorr_lag5, autocorr_lag10 |
+| **Complexity** | sample_entropy, hurst_exponent |
+| **Distribution** | coeff_variation, above_mean_pct, below_mean_pct |
+
+#### 🌊 Seasonality Analysis
+| Method | Function | Description |
+|--------|----------|-------------|
+| **FFT Detection** | `detect_seasonality()` | Fast Fourier Transform for cycles |
+| **Decomposition** | `decompose_seasonality()` | Trend/Seasonal/Residual decomposition |
+
+#### 🎯 Market Regime Detection
+| Regime | Description |
+|--------|-------------|
+| `TRENDING_UP` | Strong upward momentum |
+| `TRENDING_DOWN` | Strong downward momentum |
+| `RANGING` | Sideways consolidation |
+| `HIGH_VOLATILITY` | Elevated volatility environment |
+| `LOW_VOLATILITY` | Compressed volatility (pre-breakout) |
+| `BREAKOUT` | Volatility expansion with upward movement |
+| `BREAKDOWN` | Volatility expansion with downward movement |
+
+### Time Series Feature Calculators (7 MCP Tools)
+
+| Calculator | MCP Tool | Description |
+|------------|----------|-------------|
+| **Price Forecast** | `calculate_price_forecast` | Multi-model price forecasting with confidence intervals |
+| **Anomaly Detection** | `calculate_anomaly_detection` | Ensemble anomaly detection across multiple methods |
+| **Change Points** | `calculate_change_point_detection` | Detect structural breaks and regime changes |
+| **Feature Extraction** | `calculate_feature_extraction` | Extract 40+ statistical features for ML |
+| **Regime Detection** | `calculate_regime_detection` | Classify market regime with transition matrix |
+| **Seasonality** | `calculate_seasonality_analysis` | Detect seasonal patterns and decompose trends |
+| **Funding Forecast** | `calculate_funding_forecast` | Forecast funding rates with arbitrage signals |
+
+### Usage Examples
+
+```python
+# Forecast BTC prices using auto-selected model
+await calculate_price_forecast(
+    symbol="BTCUSDT",
+    exchange="binance",
+    hours=168,  # 7 days history
+    forecast_steps=24,  # 24 hours ahead
+    model="auto",  # arima, exponential_smoothing, theta, auto
+    confidence=0.95
+)
+
+# Detect anomalies using ensemble methods
+await calculate_anomaly_detection(
+    symbol="ETHUSDT",
+    exchange="binance",
+    data_type="prices",  # prices, trades, funding_rates, liquidations
+    hours=24,
+    method="ensemble"  # zscore, iqr, isolation_forest, cusum, ensemble
+)
+
+# Detect market regime
+await calculate_regime_detection(
+    symbol="SOLUSDT",
+    exchange="binance",
+    hours=168,
+    lookback=20,
+    volatility_threshold=0.02
+)
+
+# Extract ML features
+await calculate_feature_extraction(
+    symbol="BTCUSDT",
+    exchange="binance",
+    data_type="prices",
+    hours=24,
+    include_advanced=True  # Include Hurst exponent, sample entropy
+)
+
+# Forecast funding rates for arbitrage
+await calculate_funding_forecast(
+    symbol="BTCUSDT",
+    exchange="binance",
+    hours=168,
+    forecast_periods=8,  # 8 funding periods (64 hours)
+    include_seasonality=True
+)
+```
+
+### Institutional Calculations Support
+
+The `TimeSeriesData` class is designed to work with future institutional calculations:
+
+```python
+from src.analytics import TimeSeriesData, get_timeseries_engine
+
+# Create from DataFrame with timestamps (future institutional data)
+ts = TimeSeriesData.from_dataframe(
+    df,
+    time_col="timestamp",
+    value_col="institutional_metric"
+)
+
+# Or from DuckDB results
+ts = TimeSeriesData.from_duckdb_result(results, name="metric")
+
+# Apply forecasting
+engine = get_timeseries_engine()
+forecast = engine.auto_forecast(ts, forecast_steps=24)
+```
 
 ---
 
@@ -375,7 +527,9 @@ await get_full_market_snapshot(
 
 The Feature Calculator Framework allows you to create custom analytics scripts that automatically become MCP tools. This enables extensible, modular analytics without modifying core code.
 
-### Built-in Calculators
+### Built-in Calculators (11 Total)
+
+#### Core Market Calculators (4)
 
 | Calculator | MCP Tool | Description |
 |------------|----------|-------------|
@@ -383,6 +537,18 @@ The Feature Calculator Framework allows you to create custom analytics scripts t
 | **Liquidation Cascade** | `calculate_liquidation_cascade` | Detect cascade patterns and risk |
 | **Funding Arbitrage** | `calculate_funding_arbitrage` | Identify funding rate arbitrage opportunities |
 | **Volatility Regime** | `calculate_volatility_regime` | Detect volatility regimes and transitions |
+
+#### Time Series Calculators (7)
+
+| Calculator | MCP Tool | Description |
+|------------|----------|-------------|
+| **Price Forecast** | `calculate_price_forecast` | Multi-model price forecasting (ARIMA, ETS, Theta) |
+| **Anomaly Detection** | `calculate_anomaly_detection` | Ensemble anomaly detection (Z-score, IQR, Isolation Forest) |
+| **Change Point Detection** | `calculate_change_point_detection` | Structural break and regime change detection |
+| **Feature Extraction** | `calculate_feature_extraction` | 40+ statistical features for ML pipelines |
+| **Regime Detection** | `calculate_regime_detection` | Market regime classification with transitions |
+| **Seasonality Analysis** | `calculate_seasonality_analysis` | Seasonal patterns and trend decomposition |
+| **Funding Forecast** | `calculate_funding_forecast` | Funding rate forecasting with arbitrage signals |
 
 ### Listing Available Calculators
 
@@ -507,19 +673,27 @@ mcp-options-order-flow-server/
 │   │   ├── cross_exchange_analytics.py  # Cross-exchange analysis
 │   │   ├── regime_analytics.py          # Market regime detection
 │   │   ├── streaming_analyzer.py        # Real-time streaming analysis
-│   │   └── feature_engine.py            # Feature computation
+│   │   ├── feature_engine.py            # Feature computation
+│   │   └── timeseries_engine.py         # Time Series Analytics Engine (NEW)
 │   │
-│   ├── features/                         # Plugin Feature Framework (NEW)
+│   ├── features/                         # Plugin Feature Framework
 │   │   ├── __init__.py                  # Package exports
 │   │   ├── base.py                      # FeatureCalculator base class
 │   │   ├── registry.py                  # Auto-discovery & MCP registration
 │   │   ├── utils.py                     # Shared utilities
-│   │   └── calculators/                 # Calculator plugins
+│   │   └── calculators/                 # Calculator plugins (11 total)
 │   │       ├── __init__.py
 │   │       ├── order_flow_imbalance.py  # Order flow analysis
 │   │       ├── liquidation_cascade.py   # Cascade detection
 │   │       ├── funding_arbitrage.py     # Funding arb finder
-│   │       └── volatility_regime.py     # Volatility regimes
+│   │       ├── volatility_regime.py     # Volatility regimes
+│   │       ├── price_forecast.py        # Price forecasting (NEW)
+│   │       ├── anomaly_detection.py     # Anomaly detection (NEW)
+│   │       ├── change_point_detection.py # Change points (NEW)
+│   │       ├── feature_extraction.py    # ML features (NEW)
+│   │       ├── regime_detection.py      # Regime detection (NEW)
+│   │       ├── seasonality_analysis.py  # Seasonality (NEW)
+│   │       └── funding_forecast.py      # Funding forecast (NEW)
 │   │
 │   ├── tools/                            # MCP Tools
 │   │   ├── crypto_arbitrage_tool.py     # Arbitrage detection tools
@@ -740,17 +914,25 @@ CREATE TABLE {symbol}_{exchange}_futures_liquidations (
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Current Version: 2.1.0
+### Current Version: 2.2.0
 
-**New in 2.1.0:**
+**New in 2.2.0:**
+- ✅ Time Series Analytics Engine (Kats-equivalent)
+- ✅ 7 New Time Series Calculators
+- ✅ Forecasting: ARIMA, Exponential Smoothing, Theta
+- ✅ Anomaly Detection: Z-score, IQR, Isolation Forest, CUSUM
+- ✅ Change Point Detection: CUSUM, Binary Segmentation
+- ✅ Feature Extraction: 40+ statistical features
+- ✅ Seasonality Analysis: FFT, decomposition
+- ✅ Market Regime Detection with transitions
+- ✅ Total: **206 MCP Tools** (11 Feature Calculators)
+
+**Version 2.1.0:**
 - ✅ DuckDB Historical Query Tools (7 new tools)
 - ✅ Live + Historical Combined Tools (5 new tools)
 - ✅ Plugin-Based Feature Calculator Framework
 - ✅ 4 Built-in Feature Calculators
 - ✅ Auto-discovery and MCP registration
-- ✅ Total: **199 MCP Tools**
-
-**Version 2.0.0:**
 - ✅ 9 exchange support (Binance, Bybit, OKX, Kraken, Gate.io, Hyperliquid, Pyth)
 - ✅ 504 isolated DuckDB tables
 - ✅ Real-time arbitrage detection
