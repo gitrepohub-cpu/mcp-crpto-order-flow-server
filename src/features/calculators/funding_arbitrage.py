@@ -3,6 +3,11 @@ Funding Rate Arbitrage Calculator
 
 Identifies funding rate arbitrage opportunities across exchanges
 for delta-neutral carry trades.
+
+Uses TimeSeriesEngine for:
+- Funding rate forecasting
+- Seasonality detection in funding patterns
+- Anomaly detection for unusual funding events
 """
 
 import logging
@@ -16,19 +21,26 @@ logger = logging.getLogger(__name__)
 
 class FundingArbitrageCalculator(FeatureCalculator):
     """
-    Calculates funding rate arbitrage opportunities.
+    Calculates funding rate arbitrage opportunities using TimeSeriesEngine.
+    
+    Uses TimeSeriesEngine for:
+        - Funding rate forecasting (predict future rates)
+        - Seasonality detection in funding patterns
+        - Feature extraction for rate characteristics
     
     Metrics:
         - Cross-exchange funding spreads
         - Historical funding patterns
         - Annualized carry yield
         - Entry timing signals
+        - Funding forecast (TimeSeriesEngine)
+        - Funding seasonality (TimeSeriesEngine)
     """
     
     name = "funding_arbitrage"
-    description = "Identify funding rate arbitrage opportunities across exchanges"
+    description = "Identify funding rate arbitrage opportunities with time series forecasting"
     category = "arbitrage"
-    version = "1.0.0"
+    version = "2.0.0"
     
     async def calculate(
         self,
@@ -92,6 +104,43 @@ class FundingArbitrageCalculator(FeatureCalculator):
                         for r in results[:24]  # Last 24 data points
                     ]
                 }
+                
+                # === USE TIME SERIES ENGINE FOR ADVANCED ANALYSIS ===
+                if len(results) >= 10:
+                    try:
+                        # Create time series from funding rates
+                        ts_data = self.create_timeseries_data(
+                            [(r[0], r[1]) for r in results],
+                            name='funding_rate'
+                        )
+                        
+                        # Forecast future funding rates
+                        forecast = self.timeseries_engine.auto_forecast(ts_data, forecast_steps=3)
+                        
+                        # Detect seasonality in funding
+                        seasonality = self.timeseries_engine.detect_seasonality(ts_data, top_n=3)
+                        
+                        # Extract features
+                        rate_features = self.timeseries_engine.extract_features(ts_data)
+                        
+                        exchange_data[exc]['timeseries_analysis'] = {
+                            'forecast': {
+                                'next_3_periods': list(forecast.forecast[:3]),
+                                'model_used': forecast.model_name,
+                                'confidence': forecast.confidence
+                            },
+                            'seasonality': {
+                                'has_pattern': seasonality.get('has_seasonality', False),
+                                'dominant_period': seasonality.get('dominant_period'),
+                            },
+                            'features': {
+                                'trend': 'rising' if rate_features.get('trend_slope', 0) > 0 else 'falling',
+                                'volatility': rate_features.get('volatility', 0),
+                                'mean_reversion': rate_features.get('autocorr_lag1', 0) < -0.2
+                            }
+                        }
+                    except Exception as e:
+                        logger.warning(f"TimeSeriesEngine analysis failed for {exc}: {e}")
                 
             except Exception as e:
                 logger.error(f"Error getting funding for {exc}: {e}")

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-01-21
+
+### Added
+- **TimeSeriesEngine Integration in All Calculators**
+  - Added `self.timeseries_engine` property to base `FeatureCalculator` class (lazy-loaded)
+  - Added `self.create_timeseries_data()` helper method for DuckDB result conversion
+  - All current and future calculators automatically have TimeSeriesEngine access
+
+### Changed
+- **Core Calculator Upgrades to v2.0.0**
+  - `order_flow_imbalance.py` v2.0.0 - Added anomaly detection, feature extraction, change points
+  - `liquidation_cascade.py` v2.0.0 - Added isolation forest anomalies, cascade onset detection
+  - `funding_arbitrage.py` v2.0.0 - Added rate forecasting, seasonality detection
+  - `volatility_regime.py` v2.0.0 - Added regime detection, transition matrix, Hurst analysis
+
+- **Updated Documentation**
+  - README now shows TimeSeriesEngine features used by each calculator
+  - Custom calculator example demonstrates TimeSeriesEngine usage
+  - Added TimeSeriesEngine methods reference table
+  - Updated `calculators/__init__.py` with comprehensive TimeSeriesEngine documentation
+
+### Technical
+- Base class pattern ensures future calculators automatically use TimeSeriesEngine
+- TimeSeriesEngine is singleton, lazy-loaded for performance
+- All calculators now produce enhanced analytics with forecasting and anomaly detection
+
+---
+
 ## [2.2.0] - 2025-01-21
 
 ### Added

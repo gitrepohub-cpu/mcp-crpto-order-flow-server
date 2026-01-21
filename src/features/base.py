@@ -2,6 +2,7 @@
 Base Classes for Feature Calculators
 
 Provides the foundation for creating pluggable feature calculation scripts.
+All calculators use the TimeSeriesEngine for advanced time series analysis.
 """
 
 import logging
@@ -154,8 +155,9 @@ class FeatureCalculator(ABC):
     }
     
     def __init__(self):
-        """Initialize the calculator with database connection."""
+        """Initialize the calculator with database connection and TimeSeries engine."""
         self._qm = None
+        self._ts_engine = None
     
     @property
     def query_manager(self):
@@ -164,6 +166,38 @@ class FeatureCalculator(ABC):
             from src.tools.duckdb_historical_tools import get_query_manager
             self._qm = get_query_manager()
         return self._qm
+    
+    @property
+    def timeseries_engine(self):
+        """
+        Lazy-load the TimeSeriesEngine for advanced time series analysis.
+        
+        All calculators should use this for:
+            - Forecasting (ARIMA, Exponential Smoothing, Theta)
+            - Anomaly Detection (Z-score, IQR, Isolation Forest, CUSUM)
+            - Change Point Detection (CUSUM, Binary Segmentation)
+            - Feature Extraction (40+ statistical features)
+            - Seasonality Analysis (FFT, decomposition)
+            - Regime Detection (market regime classification)
+        """
+        if self._ts_engine is None:
+            from src.analytics.timeseries_engine import get_timeseries_engine
+            self._ts_engine = get_timeseries_engine()
+        return self._ts_engine
+    
+    def create_timeseries_data(self, results: List[tuple], name: str = "value"):
+        """
+        Create TimeSeriesData from DuckDB query results.
+        
+        Args:
+            results: Query results [(timestamp, value), ...]
+            name: Name for the time series
+        
+        Returns:
+            TimeSeriesData object for use with TimeSeriesEngine
+        """
+        from src.analytics.timeseries_engine import TimeSeriesData
+        return TimeSeriesData.from_duckdb_result(results, name=name)
     
     @abstractmethod
     async def calculate(

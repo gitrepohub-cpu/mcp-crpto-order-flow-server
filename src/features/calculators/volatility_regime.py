@@ -3,6 +3,11 @@ Volatility Regime Detector
 
 Identifies market volatility regimes and regime changes
 for adaptive trading strategies.
+
+Uses TimeSeriesEngine for:
+- Regime detection with transition probabilities
+- Seasonality analysis in volatility
+- Feature extraction for regime characteristics
 """
 
 import logging
@@ -21,19 +26,27 @@ logger = logging.getLogger(__name__)
 
 class VolatilityRegimeCalculator(FeatureCalculator):
     """
-    Detects volatility regimes and regime transitions.
+    Detects volatility regimes and regime transitions using TimeSeriesEngine.
+    
+    Uses TimeSeriesEngine for:
+        - Market regime detection (7 regime types)
+        - Transition probability matrix
+        - Seasonality analysis in volatility patterns
+        - Feature extraction for regime characteristics
     
     Metrics:
         - Current volatility state (LOW, NORMAL, HIGH, EXTREME)
         - Regime transition probability
         - Historical regime distribution
         - Volatility term structure
+        - Regime classification (TimeSeriesEngine)
+        - Volatility seasonality (TimeSeriesEngine)
     """
     
     name = "volatility_regime"
-    description = "Detect market volatility regimes and regime changes"
+    description = "Detect market volatility regimes with time series analysis and regime transitions"
     category = "volatility"
-    version = "1.0.0"
+    version = "2.0.0"
     
     async def calculate(
         self,
@@ -116,6 +129,72 @@ class VolatilityRegimeCalculator(FeatureCalculator):
             
             signals = []
             
+            # === USE TIME SERIES ENGINE FOR ADVANCED REGIME ANALYSIS ===
+            timeseries_analysis = {}
+            try:
+                # Create time series from prices
+                ts_data = self.create_timeseries_data(results, name='price')
+                
+                # Use TimeSeriesEngine regime detection
+                regime_result = self.timeseries_engine.detect_regime(
+                    ts_data,
+                    lookback=min(long_window // 60, 20),  # Convert to hourly lookback
+                    volatility_threshold=0.02
+                )
+                
+                # Get seasonality in volatility
+                vol_ts = self.create_timeseries_data(
+                    [(timestamps[i + long_window], v) for i, v in enumerate(short_vol)],
+                    name='volatility'
+                )
+                seasonality = self.timeseries_engine.detect_seasonality(vol_ts, top_n=3)
+                
+                # Extract volatility features
+                vol_features = self.timeseries_engine.extract_features(vol_ts)
+                
+                timeseries_analysis = {
+                    'engine_regime': {
+                        'current': regime_result.current_regime.value,
+                        'confidence': regime_result.confidence,
+                        'history_length': len(regime_result.regime_history)
+                    },
+                    'transition_matrix': {
+                        from_regime.value: {
+                            to_regime.value: prob 
+                            for to_regime, prob in transitions.items()
+                        }
+                        for from_regime, transitions in (regime_result.transition_matrix or {}).items()
+                    },
+                    'seasonality': {
+                        'has_pattern': seasonality.get('has_seasonality', False),
+                        'dominant_period': seasonality.get('dominant_period'),
+                        'interpretation': self._interpret_seasonality(seasonality.get('dominant_period'))
+                    },
+                    'volatility_features': {
+                        'trend': 'expanding' if vol_features.get('trend_slope', 0) > 0 else 'contracting',
+                        'hurst': vol_features.get('hurst_exponent', 0.5),
+                        'autocorrelation': vol_features.get('autocorr_lag1', 0)
+                    }
+                }
+                
+                # Generate signals from TimeSeriesEngine analysis
+                if regime_result.current_regime.value in ['BREAKOUT', 'BREAKDOWN']:
+                    signals.append(generate_signal(
+                        'WARNING', regime_result.confidence,
+                        f"TimeSeriesEngine: {regime_result.current_regime.value} regime detected",
+                        {'regime': regime_result.current_regime.value, 'confidence': regime_result.confidence}
+                    ))
+                
+                if vol_features.get('hurst_exponent', 0.5) > 0.65:
+                    signals.append(generate_signal(
+                        'INFO', 0.7,
+                        f"Volatility is trending (Hurst: {vol_features.get('hurst_exponent', 0):.2f})",
+                        {'hurst': vol_features.get('hurst_exponent')}
+                    ))
+                    
+            except Exception as e:
+                logger.warning(f"TimeSeriesEngine analysis failed: {e}")
+            
             # Generate signals
             if regime == 'EXTREME':
                 signals.append(generate_signal(
@@ -159,6 +238,7 @@ class VolatilityRegimeCalculator(FeatureCalculator):
                         'transition_count': len(transitions),
                         'avg_regime_duration': self._avg_regime_duration(regimes_history)
                     },
+                    'timeseries_analysis': timeseries_analysis,
                     'time_series': [
                         {
                             'timestamp': str(timestamps[i + long_window]),
@@ -172,7 +252,8 @@ class VolatilityRegimeCalculator(FeatureCalculator):
                     'exchange': exc,
                     'hours': hours,
                     'short_window': short_window,
-                    'long_window': long_window
+                    'long_window': long_window,
+                    'uses_timeseries_engine': True
                 },
                 signals=signals
             )
@@ -311,3 +392,20 @@ class VolatilityRegimeCalculator(FeatureCalculator):
         durations.append(current_duration)
         
         return statistics.mean(durations) if durations else 0
+    
+    def _interpret_seasonality(self, period: Optional[float]) -> str:
+        """Interpret volatility seasonality period."""
+        if period is None:
+            return "No clear seasonality"
+        
+        # Assuming minute-level data
+        if 50 <= period <= 70:  # ~60 minutes
+            return "Hourly volatility cycle"
+        elif 1400 <= period <= 1500:  # ~1440 minutes = 1 day
+            return "Daily volatility cycle"
+        elif 9500 <= period <= 10500:  # ~10080 minutes = 1 week
+            return "Weekly volatility cycle"
+        elif 20 <= period <= 40:
+            return "30-minute volatility bursts"
+        else:
+            return f"Cycle of ~{period:.0f} minutes"

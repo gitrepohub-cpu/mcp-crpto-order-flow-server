@@ -3,6 +3,11 @@ Liquidation Cascade Detector
 
 Analyzes liquidation patterns to detect potential cascade events
 where liquidations trigger more liquidations.
+
+Uses TimeSeriesEngine for:
+- Anomaly detection in liquidation patterns
+- Change point detection for cascade onset
+- Forecasting liquidation risk
 """
 
 import logging
@@ -17,19 +22,26 @@ logger = logging.getLogger(__name__)
 
 class LiquidationCascadeCalculator(FeatureCalculator):
     """
-    Detects liquidation cascade patterns.
+    Detects liquidation cascade patterns using TimeSeriesEngine.
+    
+    Uses TimeSeriesEngine for:
+        - Anomaly detection in liquidation frequency
+        - Change point detection for cascade onset
+        - Feature extraction for pattern recognition
     
     Metrics:
         - Liquidation clustering (time-based)
         - Long vs short liquidation ratio
         - Cascade probability based on OI and price movement
         - Historical cascade pattern matching
+        - Liquidation anomalies (TimeSeriesEngine)
+        - Cascade onset detection (TimeSeriesEngine)
     """
     
     name = "liquidation_cascade"
-    description = "Detect liquidation cascade patterns and estimate cascade probability"
+    description = "Detect liquidation cascade patterns with time series analysis and estimate cascade probability"
     category = "risk"
-    version = "1.0.0"
+    version = "2.0.0"
     
     async def calculate(
         self,
@@ -125,6 +137,59 @@ class LiquidationCascadeCalculator(FeatureCalculator):
                         'current_oi': oi_data
                     }
                 }
+                
+                # === USE TIME SERIES ENGINE FOR ADVANCED ANALYSIS ===
+                if len(liq_list) >= 10:
+                    try:
+                        # Create time series of liquidation values
+                        liq_ts_data = [(l['timestamp'], l['value']) for l in liq_list]
+                        ts_data = self.create_timeseries_data(liq_ts_data, name='liquidation_value')
+                        
+                        # Detect anomalies in liquidation patterns
+                        anomalies = self.timeseries_engine.detect_anomalies_isolation_forest(ts_data)
+                        
+                        # Detect change points (cascade onset)
+                        change_points = self.timeseries_engine.detect_change_points_cusum(ts_data)
+                        
+                        # Extract features
+                        liq_features = self.timeseries_engine.extract_features(ts_data)
+                        
+                        all_data[exc]['timeseries_analysis'] = {
+                            'anomalies': {
+                                'count': len(anomalies.anomaly_indices),
+                                'severity_scores': list(anomalies.scores[-5:]) if anomalies.scores is not None else [],
+                                'recent_anomaly': len([i for i in anomalies.anomaly_indices if i > len(liq_list) - 3]) > 0
+                            },
+                            'cascade_onset_detection': {
+                                'change_points': len(change_points.change_points),
+                                'recent_regime_change': len([cp for cp in change_points.change_points if cp > len(liq_list) - 5]) > 0,
+                                'segments': len(change_points.segments)
+                            },
+                            'pattern_features': {
+                                'trend': 'increasing' if liq_features.get('trend_slope', 0) > 0 else 'decreasing',
+                                'volatility': liq_features.get('volatility', 0),
+                                'skewness': liq_features.get('skew', 0),
+                                'max_spike': liq_features.get('max', 0)
+                            }
+                        }
+                        
+                        # Generate time series based signals
+                        if len([i for i in anomalies.anomaly_indices if i > len(liq_list) - 3]) > 0:
+                            all_signals.append(generate_signal(
+                                'WARNING', 0.85,
+                                f"Anomalous liquidation spike on {exc} - potential cascade trigger",
+                                {'exchange': exc, 'analysis': 'isolation_forest_anomaly'}
+                            ))
+                        
+                        if len([cp for cp in change_points.change_points if cp > len(liq_list) - 5]) > 0:
+                            all_signals.append(generate_signal(
+                                'WARNING', 0.9,
+                                f"Liquidation regime change detected on {exc} - cascade may be starting",
+                                {'exchange': exc, 'analysis': 'change_point_detection'}
+                            ))
+                            
+                    except Exception as e:
+                        logger.warning(f"TimeSeriesEngine analysis failed for {exc}: {e}")
                 
                 # Generate signals
                 if cascade_prob > 0.7:

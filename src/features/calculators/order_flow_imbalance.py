@@ -3,6 +3,11 @@ Order Flow Imbalance Calculator
 
 Analyzes order flow to detect buying/selling pressure imbalances
 that may indicate directional moves.
+
+Uses TimeSeriesEngine for:
+- Anomaly detection in order flow patterns
+- Feature extraction for flow metrics
+- Change point detection for flow regime shifts
 """
 
 import logging
@@ -23,18 +28,25 @@ class OrderFlowImbalanceCalculator(FeatureCalculator):
     """
     Calculates order flow imbalance metrics from trade data.
     
+    Uses TimeSeriesEngine for advanced analysis:
+        - Anomaly detection in flow patterns
+        - Feature extraction (trend, volatility, autocorrelation)
+        - Change point detection for regime shifts
+    
     Metrics:
         - Buy/sell volume ratio
         - Net flow (buy - sell volume)
         - Flow momentum (rate of change)
         - Imbalance z-score vs historical
         - Large trade clustering
+        - Flow anomalies (TimeSeriesEngine)
+        - Flow features (TimeSeriesEngine)
     """
     
     name = "order_flow_imbalance"
-    description = "Analyze order flow to detect buying/selling pressure imbalances"
+    description = "Analyze order flow to detect buying/selling pressure imbalances with time series analysis"
     category = "order_flow"
-    version = "1.0.0"
+    version = "2.0.0"
     
     async def calculate(
         self,
@@ -141,6 +153,62 @@ class OrderFlowImbalanceCalculator(FeatureCalculator):
                     },
                     'time_series': buckets[-20:]  # Last 20 buckets
                 }
+                
+                # === USE TIME SERIES ENGINE FOR ADVANCED ANALYSIS ===
+                if len(net_flows) >= 20:
+                    try:
+                        # Create time series from net flows
+                        ts_data = self.create_timeseries_data(
+                            [(buckets[i]['timestamp'], net_flows[i]) for i in range(len(net_flows))],
+                            name='net_flow'
+                        )
+                        
+                        # Detect anomalies in order flow
+                        anomalies = self.timeseries_engine.detect_anomalies_zscore(ts_data, threshold=2.0)
+                        
+                        # Extract features from flow pattern
+                        flow_features = self.timeseries_engine.extract_features(ts_data, include_advanced=True)
+                        
+                        # Detect change points (regime shifts in flow)
+                        change_points = self.timeseries_engine.detect_change_points_cusum(ts_data)
+                        
+                        all_data[exc]['timeseries_analysis'] = {
+                            'anomalies': {
+                                'count': len(anomalies.anomaly_indices),
+                                'recent_anomaly': len([i for i in anomalies.anomaly_indices if i > len(net_flows) - 5]) > 0,
+                                'indices': list(anomalies.anomaly_indices[-5:])
+                            },
+                            'features': {
+                                'trend_strength': flow_features.get('trend_r2', 0),
+                                'trend_direction': 'bullish' if flow_features.get('trend_slope', 0) > 0 else 'bearish',
+                                'volatility': flow_features.get('volatility', 0),
+                                'skewness': flow_features.get('skew', 0),
+                                'autocorrelation': flow_features.get('autocorr_lag1', 0),
+                                'hurst_exponent': flow_features.get('hurst_exponent', 0.5)
+                            },
+                            'regime_changes': {
+                                'count': len(change_points.change_points),
+                                'recent_change': len([cp for cp in change_points.change_points if cp > len(net_flows) - 10]) > 0
+                            }
+                        }
+                        
+                        # Generate additional signals from time series analysis
+                        if len([i for i in anomalies.anomaly_indices if i > len(net_flows) - 3]) > 0:
+                            all_signals.append(generate_signal(
+                                'WARNING', 0.75,
+                                f"Anomalous order flow detected on {exc} (unusual pattern)",
+                                {'exchange': exc, 'analysis': 'timeseries_anomaly'}
+                            ))
+                        
+                        if flow_features.get('hurst_exponent', 0.5) > 0.65:
+                            all_signals.append(generate_signal(
+                                'INFO', 0.6,
+                                f"Trending order flow on {exc} (Hurst: {flow_features.get('hurst_exponent', 0):.2f})",
+                                {'exchange': exc, 'hurst': flow_features.get('hurst_exponent')}
+                            ))
+                            
+                    except Exception as e:
+                        logger.warning(f"TimeSeriesEngine analysis failed for {exc}: {e}")
                 
                 # Generate signals
                 if zscore > 2:

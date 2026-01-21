@@ -527,18 +527,20 @@ await get_full_market_snapshot(
 
 The Feature Calculator Framework allows you to create custom analytics scripts that automatically become MCP tools. This enables extensible, modular analytics without modifying core code.
 
+**ALL CALCULATORS USE THE TIME SERIES ENGINE** - Every calculator (existing and future) has access to `self.timeseries_engine` for advanced time series analysis including forecasting, anomaly detection, change points, and regime detection.
+
 ### Built-in Calculators (11 Total)
 
-#### Core Market Calculators (4)
+#### Core Market Calculators (4) - v2.0.0 with TimeSeriesEngine
 
-| Calculator | MCP Tool | Description |
-|------------|----------|-------------|
-| **Order Flow Imbalance** | `calculate_order_flow_imbalance` | Detect buying/selling pressure imbalances |
-| **Liquidation Cascade** | `calculate_liquidation_cascade` | Detect cascade patterns and risk |
-| **Funding Arbitrage** | `calculate_funding_arbitrage` | Identify funding rate arbitrage opportunities |
-| **Volatility Regime** | `calculate_volatility_regime` | Detect volatility regimes and transitions |
+| Calculator | MCP Tool | TimeSeriesEngine Features Used |
+|------------|----------|-------------------------------|
+| **Order Flow Imbalance** | `calculate_order_flow_imbalance` | Anomaly detection, feature extraction, change points |
+| **Liquidation Cascade** | `calculate_liquidation_cascade` | Isolation forest anomalies, cascade onset detection |
+| **Funding Arbitrage** | `calculate_funding_arbitrage` | Rate forecasting, seasonality detection |
+| **Volatility Regime** | `calculate_volatility_regime` | Regime detection, transition matrix, seasonality |
 
-#### Time Series Calculators (7)
+#### Time Series Calculators (7) - Full TimeSeriesEngine Integration
 
 | Calculator | MCP Tool | Description |
 |------------|----------|-------------|
@@ -571,7 +573,7 @@ from src.features.utils import generate_signal
 
 class MyCustomCalculator(FeatureCalculator):
     name = "my_custom_feature"
-    description = "Calculate my custom market feature"
+    description = "Calculate my custom market feature with time series analysis"
     category = "custom"
     version = "1.0.0"
     
@@ -582,14 +584,43 @@ class MyCustomCalculator(FeatureCalculator):
         hours: int = 24,
         **params
     ) -> FeatureResult:
-        # Your calculation logic here
-        data = {'my_metric': 123.45}
+        # 1. Query data from DuckDB
+        query = f"""
+            SELECT timestamp, price, volume 
+            FROM exchange_data 
+            WHERE symbol = '{symbol}'
+            ORDER BY timestamp
+        """
+        results = self.db.execute(query).fetchall()
+        
+        # 2. Convert to TimeSeriesData for analysis
+        ts_data = self.create_timeseries_data(results, name="price")
+        
+        # 3. USE TIME SERIES ENGINE FOR ANALYSIS
+        # Detect anomalies
+        anomalies = self.timeseries_engine.detect_anomalies_zscore(ts_data)
+        
+        # Forecast future values
+        forecast = self.timeseries_engine.auto_forecast(ts_data, horizon=3)
+        
+        # Detect regime changes
+        regime = self.timeseries_engine.detect_regime(ts_data)
+        
+        # Extract features
+        features = self.timeseries_engine.extract_features(ts_data)
+        
+        data = {
+            'anomaly_count': len([a for a in anomalies if a['is_anomaly']]),
+            'forecast_next': forecast.get('forecast', []),
+            'current_regime': regime.get('current_regime'),
+            'hurst_exponent': features.get('hurst_exponent')
+        }
         
         signals = []
-        if data['my_metric'] > 100:
+        if data['anomaly_count'] > 0:
             signals.append(generate_signal(
-                'BULLISH', 0.8,
-                "My custom signal triggered",
+                'WARNING', 0.8,
+                f"Detected {data['anomaly_count']} anomalies",
                 data
             ))
         
@@ -612,6 +643,23 @@ class MyCustomCalculator(FeatureCalculator):
 
 3. **Use via MCP tool**: `calculate_my_custom_feature`
 
+### TimeSeriesEngine Methods Available
+
+Every calculator has access to `self.timeseries_engine` with these methods:
+
+| Method | Description |
+|--------|-------------|
+| `auto_forecast(ts_data, horizon)` | Multi-model forecasting (ARIMA, ETS, Theta) |
+| `detect_anomalies_zscore(ts_data)` | Z-score anomaly detection |
+| `detect_anomalies_iqr(ts_data)` | IQR-based anomaly detection |
+| `detect_anomalies_isolation_forest(ts_data)` | ML isolation forest |
+| `detect_change_points_cusum(ts_data)` | CUSUM change point detection |
+| `detect_change_points_pelt(ts_data)` | PELT algorithm change points |
+| `detect_regime(ts_data)` | Regime detection with transitions |
+| `detect_seasonality(ts_data)` | Seasonal pattern detection |
+| `extract_features(ts_data)` | 40+ statistical features |
+| `decompose(ts_data)` | Trend/seasonal decomposition |
+
 ### Framework Architecture
 
 ```
@@ -622,10 +670,10 @@ src/features/
 ├── utils.py              # Shared utilities (stats, signals, etc.)
 └── calculators/          # Your calculator plugins go here
     ├── __init__.py
-    ├── order_flow_imbalance.py
-    ├── liquidation_cascade.py
-    ├── funding_arbitrage.py
-    └── volatility_regime.py
+    ├── order_flow_imbalance.py   # v2.0.0 - TimeSeriesEngine
+    ├── liquidation_cascade.py    # v2.0.0 - TimeSeriesEngine
+    ├── funding_arbitrage.py      # v2.0.0 - TimeSeriesEngine
+    └── volatility_regime.py      # v2.0.0 - TimeSeriesEngine
 ```
 
 ### Available Utilities in `src/features/utils.py`
