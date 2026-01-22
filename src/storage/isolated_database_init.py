@@ -396,8 +396,8 @@ def initialize_isolated_database(db_path: str = "data/isolated_exchange_data.duc
                 INSERT OR IGNORE INTO _table_registry (table_name, symbol, exchange, market_type, stream_type)
                 VALUES (?, ?, ?, ?, ?)
             """, (table_name, symbol, exchange, market_type, stream_type))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not insert into table registry: {e}")
     
     # Summary
     logger.info("\n" + "=" * 80)

@@ -176,8 +176,8 @@ async def get_market_snapshot_full(
                         if liqs:
                             total_long_liqs += liqs[0][0] or 0
                             total_short_liqs += liqs[0][1] or 0
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Error querying liquidations for {exc}: {e}")
             
             result['historical_context']['liquidations'] = {
                 'long_liquidated': total_long_liqs,

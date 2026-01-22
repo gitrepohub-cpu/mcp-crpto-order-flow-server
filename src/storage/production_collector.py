@@ -192,11 +192,13 @@ class ProductionDataCollector:
                   'funding_rates', 'open_interest', 'ticker_24h', 'candles', 'liquidations']
         for table in tables:
             try:
-                max_id = self.conn.execute(f"SELECT MAX(id) FROM {table}").fetchone()[0]
+                result = self.conn.execute(f"SELECT MAX(id) FROM {table}").fetchone()
+                max_id = result[0] if result and result[0] is not None else 0
                 if max_id:
                     self.buffers._id_counters[table] = max_id
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not get max ID for {table}: {e}")
+                self.buffers._id_counters[table] = 0
                 
         logger.info(f"✅ Connected to database: {self.db_path}")
     
@@ -225,7 +227,7 @@ class ProductionDataCollector:
                 mid = (bid + ask) / 2
             
             spread = (ask - bid) if (bid and ask) else None
-            spread_bps = (spread / mid * 10000) if (spread and mid) else None
+            spread_bps = (spread / mid * 10000) if (spread and mid and mid > 0) else None
             
             record = (
                 record_id,
@@ -276,13 +278,13 @@ class ProductionDataCollector:
             # Aggregates
             total_bid = sum(q for q in bid_qtys if q) if bid_qtys else None
             total_ask = sum(q for q in ask_qtys if q) if ask_qtys else None
-            ratio = (total_bid / total_ask) if (total_bid and total_ask) else None
+            ratio = (total_bid / total_ask) if (total_bid and total_ask and total_ask > 0) else None
             
             bid_1 = bid_prices[0]
             ask_1 = ask_prices[0]
             mid = ((bid_1 + ask_1) / 2) if (bid_1 and ask_1) else None
             spread = (ask_1 - bid_1) if (bid_1 and ask_1) else None
-            spread_pct = (spread / mid * 100) if (spread and mid) else None
+            spread_pct = (spread / mid * 100) if (spread and mid and mid > 0) else None
             
             record = (
                 record_id,

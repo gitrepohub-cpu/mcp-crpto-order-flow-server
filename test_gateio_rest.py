@@ -305,8 +305,8 @@ async def test_gateio_rest():
                         "open_interest": float(latest.get("open_interest", 0)),
                         "open_interest_usd": float(latest.get("open_interest_usd", 0))
                     })
-            except:
-                pass
+            except Exception as e:
+                print(f"    Skipped {contract}: {e}")
             await asyncio.sleep(0.2)
         
         results["open_interest_all"] = len(all_oi) if all_oi else "error"

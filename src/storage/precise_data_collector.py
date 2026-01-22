@@ -368,8 +368,8 @@ class PreciseDataCollector:
         for idx in indexes:
             try:
                 self._conn.execute(idx)
-            except:
-                pass  # Index may already exist
+            except Exception as e:
+                logger.debug(f"Index creation skipped (may already exist): {e}")
         
         logger.info("✅ All 10 tables and indexes created")
     

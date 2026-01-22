@@ -346,8 +346,8 @@ class LiquidationCascadeCalculator(FeatureCalculator):
                     'value': result[0][0],
                     'timestamp': str(result[0][1])
                 }
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not get current OI for {symbol}/{exchange}: {e}")
         
         return {}
     

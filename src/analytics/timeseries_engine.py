@@ -284,7 +284,11 @@ class TimeSeriesEngine:
             else:
                 model = ARIMA(values, order=order)
             
-            fitted = model.fit(disp=False)
+            # Fit model (suppress warnings with warnings filter instead of deprecated disp param)
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                fitted = model.fit()
             
             # Forecast
             forecast_result = fitted.get_forecast(steps=steps)
@@ -465,22 +469,22 @@ class TimeSeriesEngine:
         try:
             result = self.forecast_arima(ts, steps, confidence=confidence)
             results.append(('ARIMA', result, result.metrics.get('aic', float('inf'))))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"ARIMA forecasting failed: {e}")
         
         # Try Exponential Smoothing
         try:
             result = self.forecast_exponential_smoothing(ts, steps, confidence=confidence)
             results.append(('ExpSmooth', result, result.metrics.get('sse', float('inf'))))
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Exponential Smoothing forecasting failed: {e}")
         
         # Try Theta
         try:
             result = self.forecast_theta(ts, steps, confidence=confidence)
             results.append(('Theta', result, 0))  # Theta doesn't have AIC
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Theta forecasting failed: {e}")
         
         if not results:
             raise ValueError("All forecasting methods failed")
@@ -878,7 +882,8 @@ class TimeSeriesEngine:
                 pacf_values = pacf(values, nlags=min(10, n//3))
                 features['pacf_lag1'] = float(pacf_values[1]) if len(pacf_values) > 1 else 0
                 features['pacf_lag5'] = float(pacf_values[5]) if len(pacf_values) > 5 else 0
-        except:
+        except Exception as e:
+            logger.debug(f"ACF/PACF calculation failed: {e}")
             features['acf_lag1'] = 0
             features['acf_lag2'] = 0
             features['acf_lag5'] = 0
@@ -893,7 +898,8 @@ class TimeSeriesEngine:
             features['adf_statistic'] = float(adf_result[0])
             features['adf_pvalue'] = float(adf_result[1])
             features['is_stationary'] = float(adf_result[1] < 0.05)
-        except:
+        except Exception as e:
+            logger.debug(f"ADF stationarity test failed: {e}")
             features['adf_statistic'] = 0
             features['adf_pvalue'] = 1
             features['is_stationary'] = 0
@@ -922,10 +928,12 @@ class TimeSeriesEngine:
                 fft_values = np.abs(fft(values.values))[:n//2]
                 freqs = np.fft.fftfreq(n)[:n//2]
                 
-                features['spectral_centroid'] = float(np.sum(freqs * fft_values) / np.sum(fft_values)) if np.sum(fft_values) > 0 else 0
+                fft_sum = np.sum(fft_values)
+                features['spectral_centroid'] = float(np.sum(freqs * fft_values) / fft_sum) if fft_sum > 0 else 0
                 features['spectral_energy'] = float(np.sum(fft_values ** 2))
                 features['dominant_frequency'] = float(freqs[np.argmax(fft_values)]) if len(fft_values) > 0 else 0
-            except:
+            except Exception as e:
+                logger.debug(f"Spectral features calculation failed: {e}")
                 features['spectral_centroid'] = 0
                 features['spectral_energy'] = 0
                 features['dominant_frequency'] = 0

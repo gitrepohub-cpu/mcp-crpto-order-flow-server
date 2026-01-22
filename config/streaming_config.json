@@ -1,0 +1,51 @@
+{
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT"
+  ],
+  "exchanges": [
+    "binance",
+    "bybit"
+  ],
+  "market_type": "futures",
+  "forecast_interval_seconds": 300,
+  "drift_check_interval_seconds": 600,
+  "batch_size": 100,
+  "flush_interval_seconds": 5,
+  "health_check_interval_seconds": 60,
+  "alert_channels": [
+    "log",
+    "file"
+  ],
+  "auto_retrain": true,
+  "retraining_config": {
+    "min_drift_severity": "HIGH",
+    "max_trials": 50,
+    "timeout_seconds": 300
+  },
+  "forecasting_config": {
+    "default_priority": "fast",
+    "default_horizon": 24,
+    "use_gpu": true,
+    "cache_models": true,
+    "model_preference": ["lightgbm", "nbeats", "theta"]
+  },
+  "data_retention_days": 30,
+  "backup_enabled": true,
+  "stream_types": [
+    "prices",
+    "trades",
+    "orderbooks",
+    "funding_rates",
+    "open_interest",
+    "liquidations"
+  ],
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    "file": "logs/streaming.log"
+  }
+}

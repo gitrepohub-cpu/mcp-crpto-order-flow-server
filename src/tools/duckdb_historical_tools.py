@@ -100,8 +100,9 @@ class DuckDBQueryManager:
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?",
                 [table_name]
             ).fetchone()
-            return result[0] > 0
-        except:
+            return result[0] > 0 if result else False
+        except Exception as e:
+            logger.debug(f"Error checking if table {table_name} exists: {e}")
             return False
         finally:
             conn.close()
@@ -111,8 +112,9 @@ class DuckDBQueryManager:
         conn = self._get_connection()
         try:
             result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
-            return result[0] if result else 0
-        except:
+            return result[0] if result and result[0] is not None else 0
+        except Exception as e:
+            logger.debug(f"Error getting record count for {table_name}: {e}")
             return 0
         finally:
             conn.close()
@@ -586,8 +588,9 @@ async def get_database_stats() -> str:
                 WHERE table_schema = 'main'
             """
             table_count = qm.execute_query(table_count_query)
-            stats['total_tables'] = table_count[0][0] if table_count else 0
-        except:
+            stats['total_tables'] = table_count[0][0] if table_count and table_count[0] else 0
+        except Exception as e:
+            logger.debug(f"Error getting table count: {e}")
             stats['total_tables'] = 0
         
         return _format_db_stats_xml(stats)

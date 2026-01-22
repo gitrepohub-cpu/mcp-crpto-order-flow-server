@@ -279,8 +279,9 @@ class DuckDBStorageManager:
             for table_name in self.SCHEMAS.keys():
                 try:
                     result = self.conn.execute(f"SELECT MAX(id) FROM {table_name}").fetchone()
-                    self.id_counters[table_name] = (result[0] or 0) + 1
-                except:
+                    self.id_counters[table_name] = (result[0] if result and result[0] is not None else 0) + 1
+                except Exception as e:
+                    logger.debug(f"Could not get max ID for {table_name}: {e}")
                     self.id_counters[table_name] = 1
             
             logger.info("DuckDB connected successfully")
@@ -775,13 +776,15 @@ class DuckDBStorageManager:
         
         for table_name in self.SCHEMAS.keys():
             try:
-                count = self.conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                result = self.conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+                count = result[0] if result and result[0] is not None else 0
                 stats['tables'][table_name] = {
                     'records': count,
                     'inserted_session': self.insert_count.get(table_name, 0)
                 }
                 stats['total_records'] += count
-            except:
+            except Exception as e:
+                logger.debug(f"Could not get stats for {table_name}: {e}")
                 stats['tables'][table_name] = {'records': 0, 'inserted_session': 0}
         
         # Get file size

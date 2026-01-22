@@ -6,6 +6,11 @@ NO DATA MIXING - Complete isolation per coin/exchange combination.
 
 Table naming: {symbol}_{exchange}_{market_type}_{stream}
 Example: btcusdt_binance_futures_prices
+
+Enhanced with:
+- Real-time analytics integration
+- Python 3.11+ compatible async patterns
+- Health monitoring hooks
 """
 
 import asyncio
@@ -16,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Callable, Any
 import time
 import logging
 
@@ -38,6 +43,11 @@ class IsolatedDataCollector:
     Data collector with COMPLETE ISOLATION per coin/exchange.
     Each coin on each exchange has its own dedicated tables.
     Data NEVER mixes between exchanges or market types.
+    
+    Enhanced Features:
+    - Real-time analytics callbacks
+    - Health monitoring integration
+    - Python 3.11+ async/await patterns
     """
     
     def __init__(self, db_path: str = "data/isolated_exchange_data.duckdb"):
@@ -47,11 +57,57 @@ class IsolatedDataCollector:
         self.id_counters: Dict[str, int] = defaultdict(int)
         self._lock = asyncio.Lock()
         
+        # Analytics callbacks
+        self._on_price_callbacks: List[Callable] = []
+        self._on_trade_callbacks: List[Callable] = []
+        self._on_data_callbacks: List[Callable] = []
+        
         self.stats = {
             'total_records': 0,
             'records_by_table': defaultdict(int),
-            'last_flush': datetime.now(timezone.utc)
+            'last_flush': datetime.now(timezone.utc),
+            'errors': 0,
+            'warnings': 0
         }
+    
+    def register_price_callback(self, callback: Callable):
+        """Register callback for price updates (for real-time analytics)"""
+        self._on_price_callbacks.append(callback)
+        logger.info(f"📊 Registered price callback: {callback.__name__}")
+    
+    def register_trade_callback(self, callback: Callable):
+        """Register callback for trade updates"""
+        self._on_trade_callbacks.append(callback)
+        logger.info(f"📊 Registered trade callback: {callback.__name__}")
+    
+    def register_data_callback(self, callback: Callable):
+        """Register callback for all data updates"""
+        self._on_data_callbacks.append(callback)
+        logger.info(f"📊 Registered data callback: {callback.__name__}")
+    
+    async def _notify_price_callbacks(self, symbol: str, exchange: str, 
+                                       market_type: str, data: dict):
+        """Notify registered price callbacks"""
+        for callback in self._on_price_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(symbol, exchange, market_type, data)
+                else:
+                    callback(symbol, exchange, market_type, data)
+            except Exception as e:
+                logger.warning(f"Price callback error: {e}")
+    
+    async def _notify_trade_callbacks(self, symbol: str, exchange: str,
+                                       market_type: str, data: dict):
+        """Notify registered trade callbacks"""
+        for callback in self._on_trade_callbacks:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(symbol, exchange, market_type, data)
+                else:
+                    callback(symbol, exchange, market_type, data)
+            except Exception as e:
+                logger.warning(f"Trade callback error: {e}")
     
     def connect(self):
         """Connect to DuckDB."""
@@ -62,19 +118,26 @@ class IsolatedDataCollector:
         try:
             tables = self.conn.execute("SELECT table_name FROM _table_registry").fetchall()
             self.existing_tables = {t[0] for t in tables}
-        except:
+        except Exception as e:
             # Fallback: get all tables
-            tables = self.conn.execute("SHOW TABLES").fetchall()
-            self.existing_tables = {t[0] for t in tables if not t[0].startswith('_')}
+            logger.debug(f"Table registry not found, using SHOW TABLES fallback: {e}")
+            try:
+                tables = self.conn.execute("SHOW TABLES").fetchall()
+                self.existing_tables = {t[0] for t in tables if not t[0].startswith('_')}
+            except Exception as e2:
+                logger.warning(f"Failed to get table list: {e2}")
+                self.existing_tables = set()
         
         # Load current max IDs for all tables
         for table_name in self.existing_tables:
             try:
-                max_id = self.conn.execute(f"SELECT MAX(id) FROM {table_name}").fetchone()[0]
+                result = self.conn.execute(f"SELECT MAX(id) FROM {table_name}").fetchone()
+                max_id = result[0] if result and result[0] is not None else 0
                 if max_id:
                     self.id_counters[table_name] = max_id
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not get max ID for {table_name}: {e}")
+                self.id_counters[table_name] = 0
         
         logger.info(f"✅ Connected to ISOLATED database: {self.db_path}")
         logger.info(f"   Loaded {len(self.id_counters)} table ID counters")
@@ -129,7 +192,7 @@ class IsolatedDataCollector:
                 mid = (bid + ask) / 2
             
             spread = (ask - bid) if (bid and ask) else None
-            spread_bps = (spread / mid * 10000) if (spread and mid) else None
+            spread_bps = (spread / mid * 10000) if (spread and mid and mid > 0) else None
             
             record = (
                 record_id,
@@ -144,6 +207,16 @@ class IsolatedDataCollector:
             self.buffers[table_name].append(record)
             self.stats['total_records'] += 1
             self.stats['records_by_table'][table_name] += 1
+        
+        # 🔔 Notify analytics callbacks (outside lock for performance)
+        await self._notify_price_callbacks(symbol, exchange, market_type, {
+            'price': mid,
+            'bid': bid,
+            'ask': ask,
+            'spread': spread,
+            'spread_bps': spread_bps,
+            'timestamp': datetime.now(timezone.utc)
+        })
     
     async def add_orderbook(self, symbol: str, exchange: str, market_type: str, data: dict):
         """
@@ -180,13 +253,13 @@ class IsolatedDataCollector:
             # Aggregates
             total_bid = sum(b[1] for b in bids if b[1]) if bids else None
             total_ask = sum(a[1] for a in asks if a[1]) if asks else None
-            ratio = (total_bid / total_ask) if (total_bid and total_ask) else None
+            ratio = (total_bid / total_ask) if (total_bid and total_ask and total_ask > 0) else None
             
             bid_1 = bids[0][0] if bids else None
             ask_1 = asks[0][0] if asks else None
             mid = ((bid_1 + ask_1) / 2) if (bid_1 and ask_1) else None
             spread = (ask_1 - bid_1) if (bid_1 and ask_1) else None
-            spread_pct = (spread / mid * 100) if (spread and mid) else None
+            spread_pct = (spread / mid * 100) if (spread and mid and mid > 0) else None
             
             record = (
                 record_id,
@@ -217,6 +290,7 @@ class IsolatedDataCollector:
             price = data.get('price')
             qty = data.get('quantity') or data.get('qty') or data.get('size')
             quote_value = (price * qty) if (price and qty) else None
+            side = data.get('side', 'unknown')
             
             record = (
                 record_id,
@@ -225,13 +299,22 @@ class IsolatedDataCollector:
                 price,
                 qty,
                 quote_value,
-                data.get('side', 'unknown'),
+                side,
                 data.get('is_buyer_maker')
             )
             
             self.buffers[table_name].append(record)
             self.stats['total_records'] += 1
             self.stats['records_by_table'][table_name] += 1
+        
+        # 🔔 Notify trade callbacks (outside lock for performance)
+        await self._notify_trade_callbacks(symbol, exchange, market_type, {
+            'price': price,
+            'quantity': qty,
+            'quote_value': quote_value,
+            'side': side,
+            'timestamp': datetime.now(timezone.utc)
+        })
     
     async def add_mark_price(self, symbol: str, exchange: str, market_type: str, data: dict):
         """
@@ -574,6 +657,62 @@ class IsolatedDataCollector:
             
             self.stats['last_flush'] = datetime.now(timezone.utc)
             return flushed, tables_flushed
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HEALTH MONITORING
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def get_health_metrics(self) -> dict:
+        """
+        Get health metrics for monitoring integration.
+        
+        Returns:
+            dict with health status and metrics
+        """
+        now = datetime.now(timezone.utc)
+        last_flush = self.stats.get('last_flush', now)
+        flush_age_secs = (now - last_flush).total_seconds() if last_flush else 0
+        
+        # Count pending records
+        pending_records = sum(len(records) for records in self.buffers.values())
+        pending_tables = len([t for t, r in self.buffers.items() if r])
+        
+        # Determine health status
+        if flush_age_secs > 60 or pending_records > 10000:
+            health_status = 'degraded'
+        elif flush_age_secs > 120 or pending_records > 50000:
+            health_status = 'critical'
+        else:
+            health_status = 'healthy'
+        
+        return {
+            'status': health_status,
+            'total_records_collected': self.stats['total_records'],
+            'pending_records': pending_records,
+            'pending_tables': pending_tables,
+            'last_flush': last_flush.isoformat() if last_flush else None,
+            'flush_age_seconds': flush_age_secs,
+            'errors': self.stats.get('errors', 0),
+            'warnings': self.stats.get('warnings', 0),
+            'active_callbacks': {
+                'price': len(self._on_price_callbacks),
+                'trade': len(self._on_trade_callbacks),
+                'data': len(self._on_data_callbacks)
+            },
+            'buffer_stats': {
+                table: len(records) 
+                for table, records in list(self.buffers.items())[:20]  # Top 20
+            }
+        }
+    
+    def get_collection_summary(self) -> dict:
+        """Get summary of data collection for all tables."""
+        return {
+            'total_records': self.stats['total_records'],
+            'tables_with_data': len(self.stats['records_by_table']),
+            'records_by_table': dict(self.stats['records_by_table']),
+            'last_flush': self.stats['last_flush'].isoformat() if self.stats.get('last_flush') else None
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

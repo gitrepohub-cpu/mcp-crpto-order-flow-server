@@ -238,6 +238,118 @@ from .deribit_tools import (
     deribit_settlements_tool,
 )
 
+# ============================================================================
+# DARTS FORECASTING TOOLS
+# ============================================================================
+
+from .darts_tools import (
+    # Core Forecasting
+    forecast_with_darts_statistical,
+    forecast_with_darts_ml,
+    forecast_with_darts_dl,
+    forecast_quick,
+    forecast_zero_shot,  # Chronos-2 foundation model
+    list_darts_models,
+    route_forecast_request,  # Intelligent routing
+)
+
+from .darts_ensemble_tools import (
+    # Ensemble Forecasting
+    ensemble_forecast_simple,
+    ensemble_forecast_advanced,
+    ensemble_auto_select,
+)
+
+from .darts_ml_tools import (
+    # Model Comparison
+    compare_all_models,
+    auto_model_select,
+)
+
+from .darts_explainability_tools import (
+    # Explainability
+    explain_forecast_features,
+    explain_model_decision,
+)
+
+from .darts_production_tools import (
+    # Production & Backtesting
+    backtest_model,
+    compare_models_backtest,
+)
+
+from .production_forecast_tools import (
+    # Hyperparameter Tuning
+    tune_model_hyperparameters,
+    get_parameter_space,
+    # Cross-Validation
+    cross_validate_forecast_model,
+    list_cv_strategies,
+    # Drift Detection
+    check_model_drift,
+    get_model_health_report,
+    monitor_prediction_quality,
+)
+
+# ============================================================================
+# MODEL REGISTRY TOOLS
+# ============================================================================
+
+from .model_registry_tools import (
+    registry_list_models,
+    registry_get_model_info,
+    registry_recommend_model,
+    registry_get_rankings,
+    registry_get_stats,
+    registry_compare_models,
+    registry_register_result,
+)
+
+# ============================================================================
+# COMPREHENSIVE ANALYTICS TOOLS
+# ============================================================================
+
+# ============================================================================
+# STREAMING CONTROL TOOLS
+# ============================================================================
+
+from .streaming_control_tools import (
+    start_streaming,
+    stop_streaming,
+    get_streaming_status,
+    get_streaming_health,
+    get_streaming_alerts,
+    configure_streaming,
+    get_realtime_analytics_status,
+    get_stream_forecast,
+)
+
+from .analytics_tools import (
+    # Alpha Signals (Composite Intelligence)
+    compute_alpha_signals,
+    get_institutional_pressure,
+    compute_squeeze_probability,
+    # Leverage Analytics (Positioning & Risk)
+    analyze_leverage_positioning,
+    compute_oi_flow_decomposition,
+    compute_leverage_index,
+    compute_funding_stress,
+    # Regime Analytics (Market State Intelligence)
+    detect_market_regime,
+    detect_event_risk,
+    # TimeSeries Engine (Forecasting & Anomaly Detection)
+    forecast_timeseries,
+    detect_anomalies,
+    detect_change_points,
+    detect_trend,
+    # Backtesting
+    backtest_forecast_model,
+    # Prophet Forecasting
+    forecast_with_prophet,
+    # Streaming Analysis
+    analyze_price_stream,
+)
+
 __all__ = [
     # Arbitrage tools
     "analyze_crypto_arbitrage",
@@ -451,4 +563,88 @@ __all__ = [
     "deribit_book_summary_tool",
     # Deribit - Settlements
     "deribit_settlements_tool",
+    # ========================================================================
+    # DARTS FORECASTING TOOLS
+    # ========================================================================
+    # Darts - Core Forecasting
+    "forecast_with_darts_statistical",
+    "forecast_with_darts_ml",
+    "forecast_with_darts_dl",
+    "forecast_quick",
+    "forecast_zero_shot",  # Chronos-2 foundation model
+    "list_darts_models",
+    "route_forecast_request",  # Intelligent routing
+    # Darts - Ensemble
+    "ensemble_forecast_simple",
+    "ensemble_forecast_advanced",
+    "ensemble_auto_select",
+    # Darts - Model Comparison
+    "compare_all_models",
+    "auto_model_select",
+    # Darts - Explainability
+    "explain_forecast_features",
+    "explain_model_decision",
+    # Darts - Production & Backtesting
+    "backtest_model",
+    "compare_models_backtest",
+    # ========================================================================
+    # PRODUCTION FORECASTING TOOLS
+    # ========================================================================
+    # Hyperparameter Tuning
+    "tune_model_hyperparameters",
+    "get_parameter_space",
+    # Cross-Validation
+    "cross_validate_forecast_model",
+    "list_cv_strategies",
+    # Drift Detection & Monitoring
+    "check_model_drift",
+    "get_model_health_report",
+    "monitor_prediction_quality",
+    # ========================================================================
+    # MODEL REGISTRY TOOLS
+    # ========================================================================
+    "registry_list_models",
+    "registry_get_model_info",
+    "registry_recommend_model",
+    "registry_get_rankings",
+    "registry_get_stats",
+    "registry_compare_models",
+    "registry_register_result",
+    # ========================================================================
+    # COMPREHENSIVE ANALYTICS TOOLS
+    # ========================================================================
+    # Alpha Signals (Composite Intelligence)
+    "compute_alpha_signals",
+    "get_institutional_pressure",
+    "compute_squeeze_probability",
+    # Leverage Analytics (Positioning & Risk)
+    "analyze_leverage_positioning",
+    "compute_oi_flow_decomposition",
+    "compute_leverage_index",
+    "compute_funding_stress",
+    # Regime Analytics (Market State Intelligence)
+    "detect_market_regime",
+    "detect_event_risk",
+    # TimeSeries Engine (Forecasting & Anomaly Detection)
+    "forecast_timeseries",
+    "detect_anomalies",
+    "detect_change_points",
+    "detect_trend",
+    # Backtesting
+    "backtest_forecast_model",
+    # Prophet Forecasting
+    "forecast_with_prophet",
+    # Streaming Analysis
+    "analyze_price_stream",
+    # ========================================================================
+    # STREAMING CONTROL TOOLS
+    # ========================================================================
+    "start_streaming",
+    "stop_streaming",
+    "get_streaming_status",
+    "get_streaming_health",
+    "get_streaming_alerts",
+    "configure_streaming",
+    "get_realtime_analytics_status",
+    "get_stream_forecast",
 ]
