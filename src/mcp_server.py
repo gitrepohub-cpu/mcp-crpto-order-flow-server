@@ -310,6 +310,62 @@ from src.tools.live_historical_tools import (
     compare_live_vs_historical,
 )
 
+# Import Institutional Feature Tools (Phase 4 Week 1 - 15 Tools)
+from src.tools.institutional_feature_tools import (
+    # Price Features (3 tools)
+    get_price_features,
+    get_spread_dynamics,
+    get_price_efficiency_metrics,
+    # Orderbook Features (3 tools)
+    get_orderbook_features,
+    get_depth_imbalance,
+    get_wall_detection,
+    # Trade Features (3 tools)
+    get_trade_features,
+    get_cvd_analysis,
+    get_whale_detection,
+    # Funding Features (2 tools)
+    get_funding_features,
+    get_funding_sentiment,
+    # Open Interest Features (2 tools)
+    get_oi_features,
+    get_leverage_risk,
+    # Liquidation Features (1 tool)
+    get_liquidation_features,
+    # Mark Price Features (1 tool)
+    get_mark_price_features,
+)
+
+# Import Composite Intelligence Tools (Phase 4 Week 2 - 10 Tools)
+from src.tools.composite_intelligence_tools import (
+    # Smart Money Detection (2 tools)
+    get_smart_accumulation_signal,
+    get_smart_money_flow,
+    # Squeeze & Stop Hunt (2 tools)
+    get_short_squeeze_probability,
+    get_stop_hunt_detector,
+    # Momentum Analysis (2 tools)
+    get_momentum_quality_signal,
+    get_momentum_exhaustion,
+    # Risk Assessment (2 tools)
+    get_market_maker_activity,
+    get_liquidation_cascade_risk,
+    # Market Intelligence (2 tools)
+    get_institutional_phase,
+    get_aggregated_intelligence,
+    # Bonus: Execution Quality
+    get_execution_quality,
+)
+
+# Import Visualization Tools (Phase 4 Week 3 - 5 Tools)
+from src.tools.visualization_tools import (
+    get_feature_candles,
+    get_liquidity_heatmap,
+    get_signal_dashboard,
+    get_regime_visualization,
+    get_correlation_matrix,
+)
+
 # Import Feature Calculation Framework
 from src.features.registry import FeatureRegistry
 
@@ -5955,6 +6011,1255 @@ async def deribit_settlements(currency: str = "BTC", count: int = 20) -> str:
         return json.dumps(result, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# INSTITUTIONAL FEATURE TOOLS (Phase 4 Week 1 - 15 Tools)
+# ============================================================================
+
+@mcp.tool()
+async def institutional_price_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get institutional-grade price features including microprice, spread dynamics, and efficiency metrics.
+    
+    Calculates 19 price-based features:
+    - Microprice (volume-weighted fair price) and deviation
+    - Spread dynamics (compression/expansion, z-score)
+    - Pressure ratios (bid vs ask)
+    - Price efficiency and Hurst exponent
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT", "ETHUSDT")
+        exchange: Exchange name (binance, bybit, okx, etc.)
+    
+    Returns:
+        XML analysis with features and interpretations
+    
+    Example:
+        "Get price features for BTC on Binance" → institutional_price_features("BTCUSDT", "binance")
+    """
+    import json
+    try:
+        result = await get_price_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_price_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_spread_dynamics(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Analyze spread behavior and liquidity conditions.
+    
+    Features:
+    - Spread in basis points
+    - Z-score relative to historical distribution
+    - Compression/expansion velocity
+    - Spike detection for sudden liquidity changes
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML spread analysis with actionable interpretation
+    """
+    import json
+    try:
+        result = await get_spread_dynamics(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_spread_dynamics">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_price_efficiency(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get price efficiency and trend persistence metrics.
+    
+    Features:
+    - Hurst exponent (trend persistence: >0.5 trending, <0.5 mean reverting)
+    - Price efficiency score
+    - Tick reversal rate (noise level)
+    - Price entropy (randomness measure)
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with regime classification and efficiency metrics
+    """
+    import json
+    try:
+        result = await get_price_efficiency_metrics(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_price_efficiency">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_orderbook_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get full orderbook liquidity structure features.
+    
+    Calculates 20 orderbook-based features:
+    - Multi-level depth imbalance (5, 10, cumulative levels)
+    - Liquidity gradient and concentration
+    - Absorption and replenishment dynamics
+    - Wall detection (pull/push manipulation)
+    - Support/resistance strength
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML analysis with orderbook features and liquidity insights
+    """
+    import json
+    try:
+        result = await get_orderbook_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_orderbook_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_depth_imbalance(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Analyze orderbook depth imbalance at multiple levels.
+    
+    Calculates:
+    - Level 5 imbalance (tight book)
+    - Level 10 imbalance (wider book)
+    - Cumulative imbalance (full book)
+    - Directional bias assessment
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with imbalance metrics and directional bias
+    """
+    import json
+    try:
+        result = await get_depth_imbalance(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_depth_imbalance">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_wall_detection(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect orderbook manipulation patterns (spoofing, walls).
+    
+    Identifies:
+    - Pull walls (placed then removed to fake support/resistance)
+    - Push walls (aggressive walls to attract order flow)
+    - Liquidity persistence (real vs fake liquidity)
+    - Manipulation score and alert level
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with wall detection signals and manipulation score
+    """
+    import json
+    try:
+        result = await get_wall_detection(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_wall_detection">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_trade_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get trade flow analysis features.
+    
+    Calculates 18 trade-based features:
+    - CVD (Cumulative Volume Delta) - net buying/selling
+    - Buy/sell volume ratios
+    - Whale activity detection
+    - Trade clustering and aggression
+    - Flow toxicity (informed trading)
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with trade flow features and pressure analysis
+    """
+    import json
+    try:
+        result = await get_trade_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_trade_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_cvd_analysis(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get detailed CVD (Cumulative Volume Delta) analysis.
+    
+    CVD measures net buying vs selling pressure:
+    - CVD value and normalized score
+    - CVD velocity (rate of change)
+    - Pressure state (strong buy/sell/neutral)
+    - Volume breakdown
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with CVD analysis and pressure assessment
+    """
+    import json
+    try:
+        result = await get_cvd_analysis(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_cvd_analysis">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_whale_detection(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect whale/institutional trading activity.
+    
+    Identifies:
+    - Whale volume ratio and direction
+    - Large trade clustering
+    - Institutional flow indicators
+    - Flow toxicity (informed vs uninformed)
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with whale activity metrics and alert levels
+    """
+    import json
+    try:
+        result = await get_whale_detection(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_whale_detection">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_funding_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get funding rate dynamics and carry opportunity features.
+    
+    Calculates 15 funding-based features:
+    - Current and predicted funding rates
+    - Funding z-score and extremity
+    - Funding velocity and momentum
+    - Carry opportunity score
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with funding features and carry analysis
+    """
+    import json
+    try:
+        result = await get_funding_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_funding_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_funding_sentiment(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Analyze funding rate for market sentiment and positioning.
+    
+    Provides:
+    - Sentiment classification (bullish/bearish)
+    - Crowding risk assessment
+    - Funding-based reversal signals
+    - Strategy implications
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with sentiment analysis and reversal probability
+    """
+    import json
+    try:
+        result = await get_funding_sentiment(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_funding_sentiment">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_oi_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get open interest dynamics and leverage features.
+    
+    Calculates 18 OI-based features:
+    - OI levels and changes
+    - Leverage ratios (notional/spot volume)
+    - Intent classification (accumulation vs distribution)
+    - Cascade potential (liquidation risk)
+    - OI divergence from price
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with OI features and leverage analysis
+    """
+    import json
+    try:
+        result = await get_oi_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_oi_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_leverage_risk(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Analyze leverage and liquidation cascade risk.
+    
+    Assesses:
+    - Current market leverage level and trend
+    - Leverage buildup rate
+    - Liquidation cascade potential
+    - Directional vulnerability (longs vs shorts)
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with leverage risk assessment and warnings
+    """
+    import json
+    try:
+        result = await get_leverage_risk(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_leverage_risk">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_liquidation_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get liquidation cascade and stress features.
+    
+    Calculates 12 liquidation-based features:
+    - Liquidation intensity and velocity
+    - Dominant side (longs vs shorts)
+    - Cascade patterns and clustering
+    - Stress levels and recovery signals
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with liquidation features and cascade analysis
+    """
+    import json
+    try:
+        result = await get_liquidation_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_liquidation_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def institutional_mark_price_features(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get mark price premium/discount and basis features.
+    
+    Calculates 10 mark price features:
+    - Mark vs index premium/discount
+    - Premium z-score and extremity
+    - Basis and basis velocity
+    - Fair value gap signals
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with mark price features and basis analysis
+    """
+    import json
+    try:
+        result = await get_mark_price_features(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="institutional_mark_price_features">{str(e)}</error>'
+
+
+# ============================================================================
+# COMPOSITE INTELLIGENCE TOOLS (Phase 4 Week 2 - 10 Tools)
+# ============================================================================
+
+@mcp.tool()
+async def composite_smart_accumulation(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect institutional accumulation using Smart Money Index.
+    
+    Combines multiple signals to detect institutional activity:
+    - Orderbook absorption (institutions absorbing without price impact)
+    - Whale trade activity (large directional trades)
+    - Flow toxicity (informed order flow)
+    - CVD-price divergence (stealth accumulation/distribution)
+    
+    Signal Levels:
+    - > 0.7: Strong institutional accumulation
+    - 0.4-0.7: Moderate institutional activity
+    - < 0.4: Low institutional presence
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+    
+    Returns:
+        XML with accumulation signal, confidence, and action
+    """
+    import json
+    try:
+        result = await get_smart_accumulation_signal(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_smart_accumulation">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_smart_money_flow(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get Smart Money Flow Direction for institutional trading direction.
+    
+    Detects the direction and strength of institutional money flow:
+    - BUYING: Net institutional buying pressure
+    - SELLING: Net institutional selling pressure
+    - NEUTRAL: No clear directional bias
+    
+    Components analyzed:
+    - Aggressive delta (net taker flow)
+    - Whale flow direction
+    - CVD trend
+    - OI-price divergence
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with flow direction, strength, and trade bias
+    """
+    import json
+    try:
+        result = await get_smart_money_flow(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_smart_money_flow">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_squeeze_probability(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get Squeeze Probability for short/long squeeze detection.
+    
+    Combines multiple factors to assess squeeze likelihood:
+    - Extreme funding rates (crowded positioning)
+    - High leverage ratios
+    - Position crowding metrics
+    - Price compression patterns
+    
+    Signal Levels:
+    - > 0.7: HIGH squeeze probability - expect violent move
+    - 0.4-0.7: Moderate squeeze risk
+    - < 0.4: Low squeeze probability
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with squeeze probability, direction, and action
+    """
+    import json
+    try:
+        result = await get_short_squeeze_probability(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_squeeze_probability">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_stop_hunt_detector(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect stop hunting manipulation patterns.
+    
+    Identifies potential stop hunting activity:
+    - Rapid price spikes to known stop levels
+    - Volume anomalies during spikes
+    - Quick price recovery patterns
+    - Orderbook wall movements
+    
+    Warning Levels:
+    - > 0.6: High manipulation probability - beware of stops
+    - 0.4-0.6: Some manipulation signs
+    - < 0.4: Normal market conditions
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with stop hunt probability and recommendations
+    """
+    import json
+    try:
+        result = await get_stop_hunt_detector(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_stop_hunt_detector">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_momentum_quality(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get Momentum Quality Score for trend sustainability assessment.
+    
+    Evaluates trend strength and sustainability:
+    - Volume confirmation (trend supported by volume)
+    - Price efficiency (clean vs choppy movement)
+    - CVD alignment (order flow supports direction)
+    - OI growth (new money entering)
+    
+    Quality Levels:
+    - > 0.7: High quality - sustainable trend
+    - 0.5-0.7: Moderate quality - trend may continue
+    - < 0.5: Low quality - reversal likely
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with quality score, trend outlook, and strategy
+    """
+    import json
+    try:
+        result = await get_momentum_quality_signal(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_momentum_quality">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_momentum_exhaustion(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect momentum exhaustion for trend reversal warning.
+    
+    Identifies signs of trend exhaustion:
+    - Declining volume on price continuation
+    - CVD divergence from price
+    - Decreasing OI growth
+    - Spread widening (liquidity withdrawal)
+    
+    Exhaustion Levels:
+    - > 0.7: HIGH exhaustion - reversal imminent
+    - 0.5-0.7: Moderate exhaustion - trend weakening
+    - < 0.5: Low exhaustion - trend healthy
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with exhaustion level and reversal probability
+    """
+    import json
+    try:
+        result = await get_momentum_exhaustion(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_momentum_exhaustion">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_market_maker_activity(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Analyze Market Maker positioning and activity.
+    
+    Detects market maker behavior:
+    - Wall placement patterns (bid/ask)
+    - Spread manipulation
+    - Quote stuffing detection
+    - Inventory management signals
+    
+    Activity Types:
+    - passive: MM absorbing flow, providing liquidity
+    - active: MM taking directional positions
+    - defensive: MM reducing exposure
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with MM activity type, inventory bias, and interpretation
+    """
+    import json
+    try:
+        result = await get_market_maker_activity(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_market_maker_activity">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_liquidation_cascade_risk(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Assess liquidation cascade risk for systemic risk detection.
+    
+    Evaluates cascade liquidation probability:
+    - Liquidation cluster proximity
+    - Leverage stress levels
+    - Thin liquidity zones
+    - Funding pressure direction
+    
+    Severity Levels:
+    - CRITICAL: >0.8 - Imminent cascade risk
+    - HIGH: 0.6-0.8 - Elevated risk
+    - MODERATE: 0.4-0.6 - Some risk
+    - LOW: <0.4 - Normal conditions
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with cascade risk, severity, direction, and action
+    """
+    import json
+    try:
+        result = await get_liquidation_cascade_risk(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_liquidation_cascade_risk">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_institutional_phase(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Detect institutional market cycle phase.
+    
+    Identifies the current market cycle phase:
+    - ACCUMULATION: Smart money building positions
+    - MARKUP: Uptrend phase after accumulation
+    - DISTRIBUTION: Smart money exiting positions
+    - MARKDOWN: Downtrend phase after distribution
+    - NEUTRAL: No clear phase detected
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with phase, intensity, direction, and strategy
+    """
+    import json
+    try:
+        result = await get_institutional_phase(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_institutional_phase">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_aggregated_intelligence(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Get complete aggregated market intelligence - the MASTER tool.
+    
+    This comprehensive tool:
+    1. Aggregates all 15 composite signals
+    2. Ranks signals by importance
+    3. Detects and resolves conflicts
+    4. Generates actionable trade recommendation
+    
+    Output includes:
+    - Market bias (bullish/bearish/neutral) with confidence
+    - Top 5 most important signals ranked
+    - Conflict detection and resolution
+    - Trade recommendation (direction, strength, entry bias)
+    - Risk assessment and urgency
+    - Category scores (momentum, flow, risk, timing, execution)
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        Comprehensive XML intelligence with trade recommendation
+    """
+    import json
+    try:
+        result = await get_aggregated_intelligence(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_aggregated_intelligence">{str(e)}</error>'
+
+
+@mcp.tool()
+async def composite_execution_quality(symbol: str = "BTCUSDT", exchange: str = "binance") -> str:
+    """
+    Assess execution quality and optimal entry timing.
+    
+    Evaluates current execution conditions:
+    - Spread tightness
+    - Liquidity depth
+    - Slippage estimate
+    - Optimal position sizing
+    
+    Quality Levels:
+    - EXCELLENT: Best execution conditions
+    - GOOD: Favorable conditions
+    - FAIR: Acceptable conditions
+    - POOR: Consider waiting
+    
+    Args:
+        symbol: Trading pair
+        exchange: Exchange name
+    
+    Returns:
+        XML with quality score, slippage estimate, and sizing guidance
+    """
+    import json
+    try:
+        result = await get_execution_quality(symbol, exchange)
+        if result.get("success") and result.get("xml_analysis"):
+            return result["xml_analysis"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="composite_execution_quality">{str(e)}</error>'
+
+
+# ============================================================================
+# VISUALIZATION TOOLS (Phase 4 Week 3 - 5 Tools)
+# ============================================================================
+
+@mcp.tool()
+async def viz_feature_candles(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    timeframe: str = "5m",
+    periods: int = 50,
+    overlays: str = "microprice,cvd,depth_imbalance_5,funding_rate,risk_score"
+) -> str:
+    """
+    Get feature-enriched OHLCV candles for visualization.
+    
+    Returns candlestick data with institutional feature overlays:
+    - Price OHLCV data for each period
+    - Selected feature values overlaid on each candle
+    - Panel mapping for multi-chart rendering
+    
+    Supported overlays:
+    - Price: microprice, vwap, support_strength, resistance_strength
+    - Volume: cvd, buy_volume, sell_volume
+    - Momentum: momentum_quality, hurst_exponent, momentum_exhaustion
+    - Risk: leverage_index, liquidation_cascade_risk, risk_score
+    - Orderbook: depth_imbalance_5, depth_imbalance_10, absorption_ratio
+    - Funding: funding_rate, funding_zscore
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        timeframe: Candle timeframe ("1m", "5m", "15m", "1h")
+        periods: Number of candles to return (max 200)
+        overlays: Comma-separated list of feature overlays
+    
+    Returns:
+        XML with candle data and visualization hints
+    """
+    import json
+    try:
+        overlay_list = [o.strip() for o in overlays.split(",") if o.strip()]
+        result = await get_feature_candles(symbol, exchange, timeframe, periods, overlay_list)
+        if result.get("success") and result.get("xml_visualization"):
+            return result["xml_visualization"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="viz_feature_candles">{str(e)}</error>'
+
+
+@mcp.tool()
+async def viz_liquidity_heatmap(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    depth_levels: int = 20,
+    include_walls: bool = True
+) -> str:
+    """
+    Get liquidity heatmap data for orderbook visualization.
+    
+    Returns structured data for rendering bid/ask liquidity:
+    - Liquidity distribution across price levels
+    - Intensity values for heatmap coloring
+    - Detected support/resistance walls
+    - Imbalance and liquidity metrics
+    
+    Visualization includes:
+    - Bid-side liquidity levels with intensity
+    - Ask-side liquidity levels with intensity
+    - Wall detection (large orders acting as support/resistance)
+    - Color scale hints for rendering
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        depth_levels: Number of price levels per side (max 50)
+        include_walls: Whether to detect and include liquidity walls
+    
+    Returns:
+        XML with heatmap data and visualization hints
+    """
+    import json
+    try:
+        result = await get_liquidity_heatmap(symbol, exchange, depth_levels, include_walls)
+        if result.get("success") and result.get("xml_visualization"):
+            return result["xml_visualization"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="viz_liquidity_heatmap">{str(e)}</error>'
+
+
+@mcp.tool()
+async def viz_signal_dashboard(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    include_alerts: bool = True
+) -> str:
+    """
+    Get signal dashboard data for real-time monitoring.
+    
+    Returns a structured grid of all composite signals:
+    - Current signal values and activation status
+    - Signal categorization (smart money, momentum, risk, etc.)
+    - Overall market bias assessment
+    - Active alerts for extreme values
+    
+    Dashboard categories:
+    - Smart Money: Accumulation, flow direction
+    - Squeeze Risk: Squeeze probability, stop hunt
+    - Momentum: Quality, exhaustion
+    - Risk: Liquidation cascade, overall risk
+    - Market Maker: Activity index
+    
+    Color scheme:
+    - Strong bullish (green): High confidence bullish
+    - Bullish (light green): Moderate bullish
+    - Neutral (gray): No clear direction
+    - Bearish (light red): Moderate bearish
+    - Strong bearish (red): High confidence bearish
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        include_alerts: Whether to generate alerts for extreme values
+    
+    Returns:
+        XML with dashboard grid data and visualization hints
+    """
+    import json
+    try:
+        result = await get_signal_dashboard(symbol, exchange, include_alerts)
+        if result.get("success") and result.get("xml_visualization"):
+            return result["xml_visualization"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="viz_signal_dashboard">{str(e)}</error>'
+
+
+@mcp.tool()
+async def viz_regime_timeline(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    include_history: bool = True,
+    include_transitions: bool = True
+) -> str:
+    """
+    Get market regime visualization for timeline rendering.
+    
+    Returns current regime state plus historical transitions:
+    - Current regime identification and confidence
+    - Regime characteristics (volatility, trend, liquidity)
+    - Transition probability matrix
+    - Historical regime timeline
+    - Trading strategy implications
+    
+    Regimes detected:
+    - ACCUMULATION: Smart money building positions (bullish)
+    - DISTRIBUTION: Smart money exiting (bearish)
+    - BREAKOUT: High volatility expansion (trending)
+    - SQUEEZE: Forced liquidation cascade (extreme)
+    - MEAN_REVERSION: Range-bound behavior
+    - CHAOS: Extreme unpredictable volatility
+    - CONSOLIDATION: Low volatility, building energy
+    
+    Color scheme for timeline:
+    - Green: Accumulation
+    - Red: Distribution/Squeeze
+    - Orange: Breakout
+    - Indigo: Mean Reversion
+    - Purple: Chaos
+    - Gray: Consolidation
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        include_history: Include regime change history
+        include_transitions: Include transition probabilities
+    
+    Returns:
+        XML with regime data and timeline visualization hints
+    """
+    import json
+    try:
+        result = await get_regime_visualization(symbol, exchange, include_history, include_transitions)
+        if result.get("success") and result.get("xml_visualization"):
+            return result["xml_visualization"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="viz_regime_timeline">{str(e)}</error>'
+
+
+@mcp.tool()
+async def viz_correlation_matrix(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    feature_groups: str = "prices,orderbook,trades,funding,oi",
+    include_clusters: bool = True
+) -> str:
+    """
+    Get feature correlation matrix for analysis visualization.
+    
+    Calculates correlations between institutional features:
+    - Correlation values between all feature pairs
+    - Top positive correlations (redundant features)
+    - Top negative correlations (diversifying features)
+    - Feature clusters that move together
+    
+    Feature groups available:
+    - prices: microprice, spread_zscore, pressure_ratio, hurst_exponent
+    - orderbook: depth_imbalance, absorption_ratio, support/resistance
+    - trades: cvd, whale_activity, flow_toxicity, trade_intensity
+    - funding: funding_rate, funding_zscore, funding_momentum
+    - oi: oi_delta, leverage_index, cascade_risk
+    
+    Color scale for matrix:
+    - Strong positive (green): 0.7 to 1.0
+    - Positive (light green): 0.3 to 0.7
+    - Weak/None (gray): -0.3 to 0.3
+    - Negative (light red): -0.7 to -0.3
+    - Strong negative (red): -1.0 to -0.7
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        feature_groups: Comma-separated list of groups to analyze
+        include_clusters: Whether to identify correlated clusters
+    
+    Returns:
+        XML with correlation matrix data and visualization hints
+    """
+    import json
+    try:
+        groups = [g.strip() for g in feature_groups.split(",") if g.strip()]
+        result = await get_correlation_matrix(symbol, exchange, groups, include_clusters)
+        if result.get("success") and result.get("xml_visualization"):
+            return result["xml_visualization"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="viz_correlation_matrix">{str(e)}</error>'
+
+
+# ============================================================================
+# FEATURE QUERY TOOLS (Phase 4 Week 4 - 4 Tools)
+# ============================================================================
+
+@mcp.tool()
+async def query_features(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    feature_type: str = "prices",
+    lookback_minutes: int = 60,
+    limit: int = 100,
+    columns: str = ""
+) -> str:
+    """
+    Query historical feature data by time range.
+    
+    Retrieves stored feature records for analysis, backtesting,
+    or visualization. Results include all calculated features
+    for the specified stream type.
+    
+    Available feature types:
+    - prices: Microprice, spread dynamics, pressure ratios
+    - orderbook: Depth imbalance, liquidity, absorption
+    - trades: CVD, whale detection, market impact
+    - funding: Funding rate, stress, carry yield
+    - oi: Open interest, leverage, liquidation risk
+    - liquidations: Cascade events, severity metrics
+    - mark_prices: Basis, premium/discount
+    - ticker: Volume, volatility, institutional interest
+    - composite: All composite signals
+    
+    Example query: Query last hour of price features
+    ```
+    query_features("BTCUSDT", "binance", "prices", 60, 100)
+    ```
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        feature_type: Type of features to query
+        lookback_minutes: How far back to query (max 1440 = 24h)
+        limit: Maximum records to return (max 1000)
+        columns: Comma-separated list of specific columns (empty = all)
+    
+    Returns:
+        XML with query results and summary statistics
+    """
+    import json
+    from .tools.feature_query_tools import query_historical_features
+    try:
+        cols = [c.strip() for c in columns.split(",") if c.strip()] if columns else None
+        result = await query_historical_features(symbol, exchange, feature_type, lookback_minutes, limit, cols)
+        if result.get("success") and result.get("xml_summary"):
+            return result["xml_summary"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="query_features">{str(e)}</error>'
+
+
+@mcp.tool()
+async def export_features_to_csv(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    feature_types: str = "prices,orderbook,trades",
+    lookback_minutes: int = 60,
+    include_composite: bool = False
+) -> str:
+    """
+    Export features to CSV format for external analysis.
+    
+    Creates a CSV string containing all requested feature data
+    that can be saved to file or loaded into pandas/numpy.
+    
+    The CSV includes:
+    - Timestamp column for time alignment
+    - All features from selected feature types
+    - Optional composite signals
+    
+    Usage with pandas:
+    ```python
+    import pandas as pd
+    import io
+    df = pd.read_csv(io.StringIO(csv_data))
+    ```
+    
+    Save to file:
+    ```python
+    with open('features.csv', 'w') as f:
+        f.write(csv_data)
+    ```
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        feature_types: Comma-separated list of feature types
+        lookback_minutes: Time range to export (max 1440 = 24h)
+        include_composite: Include composite signals in export
+    
+    Returns:
+        XML summary with CSV data embedded
+    """
+    import json
+    from .tools.feature_query_tools import export_features_csv
+    try:
+        types = [t.strip() for t in feature_types.split(",") if t.strip()]
+        result = await export_features_csv(symbol, exchange, types, lookback_minutes, include_composite)
+        if result.get("success") and result.get("xml_summary"):
+            # Return both summary and CSV data
+            response = result["xml_summary"]
+            if result.get("csv_data"):
+                response += f"\n\n<!-- CSV_DATA_START -->\n{result['csv_data'][:5000]}\n<!-- CSV_DATA_END -->"
+            return response
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="export_features_to_csv">{str(e)}</error>'
+
+
+@mcp.tool()
+async def get_feature_stats(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    feature_type: str = "prices",
+    lookback_minutes: int = 60
+) -> str:
+    """
+    Get statistical summary of feature distributions.
+    
+    Calculates comprehensive statistics for each feature:
+    - Mean, standard deviation, min, max
+    - Median and percentiles (25th, 75th)
+    - Null/zero counts
+    - Distribution insights and anomalies
+    
+    Useful for:
+    - Understanding feature ranges and normalization needs
+    - Detecting data quality issues
+    - Identifying unusual market conditions
+    
+    Example statistics returned:
+    - microprice: mean=50234.5, std=12.3, min=50200, max=50270
+    - spread_zscore: mean=0.12, std=1.05, skewed left
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        feature_type: Feature type to analyze
+        lookback_minutes: Time range for statistics (max 1440)
+    
+    Returns:
+        XML with comprehensive feature statistics
+    """
+    import json
+    from .tools.feature_query_tools import get_feature_statistics
+    try:
+        result = await get_feature_statistics(symbol, exchange, feature_type, lookback_minutes)
+        if result.get("success") and result.get("xml_summary"):
+            return result["xml_summary"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="get_feature_stats">{str(e)}</error>'
+
+
+@mcp.tool()
+async def analyze_feature_correlations(
+    symbol: str = "BTCUSDT",
+    exchange: str = "binance",
+    feature_types: str = "prices,orderbook,trades,funding,oi",
+    lookback_minutes: int = 60
+) -> str:
+    """
+    Analyze correlations between features across streams.
+    
+    Calculates pairwise correlations to identify:
+    - Redundant features (high positive correlation)
+    - Hedge signals (high negative correlation)
+    - Cross-stream relationships
+    - Independent signal sources
+    
+    Useful for:
+    - Feature selection and dimensionality reduction
+    - Understanding signal relationships
+    - Building diversified feature sets
+    
+    Correlation interpretation:
+    - > 0.8: Very strong positive (consider removing redundant feature)
+    - 0.5-0.8: Strong positive
+    - 0.3-0.5: Moderate positive
+    - -0.3-0.3: Weak/no correlation (independent signals)
+    - < -0.7: Strong negative (hedge/diversification signal)
+    
+    Args:
+        symbol: Trading pair (e.g., "BTCUSDT")
+        exchange: Exchange name
+        feature_types: Comma-separated feature types to analyze
+        lookback_minutes: Time range for correlation (max 1440)
+    
+    Returns:
+        XML with correlation analysis and trading insights
+    """
+    import json
+    from .tools.feature_query_tools import get_feature_correlation_analysis
+    try:
+        types = [t.strip() for t in feature_types.split(",") if t.strip()]
+        result = await get_feature_correlation_analysis(symbol, exchange, types, lookback_minutes)
+        if result.get("success") and result.get("xml_summary"):
+            return result["xml_summary"]
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return f'<error tool="analyze_feature_correlations">{str(e)}</error>'
 
 
 # ============================================================================

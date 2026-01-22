@@ -350,6 +350,91 @@ from .analytics_tools import (
     analyze_price_stream,
 )
 
+# ============================================================================
+# INSTITUTIONAL FEATURE TOOLS (Phase 4 Week 1 - 15 Tools)
+# ============================================================================
+
+from .institutional_feature_tools import (
+    # Price Features (3 tools)
+    get_price_features,
+    get_spread_dynamics,
+    get_price_efficiency_metrics,
+    # Orderbook Features (3 tools)
+    get_orderbook_features,
+    get_depth_imbalance,
+    get_wall_detection,
+    # Trade Features (3 tools)
+    get_trade_features,
+    get_cvd_analysis,
+    get_whale_detection,
+    # Funding Features (2 tools)
+    get_funding_features,
+    get_funding_sentiment,
+    # Open Interest Features (2 tools)
+    get_oi_features,
+    get_leverage_risk,
+    # Liquidation Features (1 tool)
+    get_liquidation_features,
+    # Mark Price Features (1 tool)
+    get_mark_price_features,
+)
+
+# ============================================================================
+# COMPOSITE INTELLIGENCE TOOLS (Phase 4 Week 2 - 10 Tools)
+# ============================================================================
+
+from .composite_intelligence_tools import (
+    # Smart Money Detection (2 tools)
+    get_smart_accumulation_signal,
+    get_smart_money_flow,
+    # Squeeze & Stop Hunt (2 tools)
+    get_short_squeeze_probability,
+    get_stop_hunt_detector,
+    # Momentum Analysis (2 tools)
+    get_momentum_quality_signal,
+    get_momentum_exhaustion,
+    # Risk Assessment (2 tools)
+    get_market_maker_activity,
+    get_liquidation_cascade_risk,
+    # Market Intelligence (2 tools)
+    get_institutional_phase,
+    get_aggregated_intelligence,
+    # Bonus: Execution Quality
+    get_execution_quality,
+)
+
+# ============================================================================
+# VISUALIZATION TOOLS (Phase 4 Week 3 - 5 Tools)
+# ============================================================================
+
+from .visualization_tools import (
+    # Feature Candles
+    get_feature_candles,
+    # Liquidity Heatmap
+    get_liquidity_heatmap,
+    # Signal Dashboard
+    get_signal_dashboard,
+    # Regime Visualization
+    get_regime_visualization,
+    # Correlation Matrix
+    get_correlation_matrix,
+)
+
+# ============================================================================
+# FEATURE QUERY TOOLS (Phase 4 Week 4 - 4 Tools)
+# ============================================================================
+
+from .feature_query_tools import (
+    # Historical Query
+    query_historical_features,
+    # CSV Export
+    export_features_csv,
+    # Feature Statistics
+    get_feature_statistics,
+    # Correlation Analysis
+    get_feature_correlation_analysis,
+)
+
 __all__ = [
     # Arbitrage tools
     "analyze_crypto_arbitrage",
@@ -647,4 +732,73 @@ __all__ = [
     "configure_streaming",
     "get_realtime_analytics_status",
     "get_stream_forecast",
+    # ========================================================================
+    # INSTITUTIONAL FEATURE TOOLS (Phase 4 Week 1 - 15 Tools)
+    # ========================================================================
+    # Price Features
+    "get_price_features",
+    "get_spread_dynamics",
+    "get_price_efficiency_metrics",
+    # Orderbook Features
+    "get_orderbook_features",
+    "get_depth_imbalance",
+    "get_wall_detection",
+    # Trade Features
+    "get_trade_features",
+    "get_cvd_analysis",
+    "get_whale_detection",
+    # Funding Features
+    "get_funding_features",
+    "get_funding_sentiment",
+    # Open Interest Features
+    "get_oi_features",
+    "get_leverage_risk",
+    # Liquidation Features
+    "get_liquidation_features",
+    # Mark Price Features
+    "get_mark_price_features",
+    # ========================================================================
+    # COMPOSITE INTELLIGENCE TOOLS (Phase 4 Week 2 - 10 Tools)
+    # ========================================================================
+    # Smart Money Detection
+    "get_smart_accumulation_signal",
+    "get_smart_money_flow",
+    # Squeeze & Stop Hunt
+    "get_short_squeeze_probability",
+    "get_stop_hunt_detector",
+    # Momentum Analysis
+    "get_momentum_quality_signal",
+    "get_momentum_exhaustion",
+    # Risk Assessment
+    "get_market_maker_activity",
+    "get_liquidation_cascade_risk",
+    # Market Intelligence
+    "get_institutional_phase",
+    "get_aggregated_intelligence",
+    # Bonus: Execution Quality
+    "get_execution_quality",
+    # ========================================================================
+    # VISUALIZATION TOOLS (Phase 4 Week 3 - 5 Tools)
+    # ========================================================================
+    # Feature Candles
+    "get_feature_candles",
+    # Liquidity Heatmap
+    "get_liquidity_heatmap",
+    # Signal Dashboard
+    "get_signal_dashboard",
+    # Regime Visualization
+    "get_regime_visualization",
+    # Correlation Matrix
+    "get_correlation_matrix",
+    # ========================================================================
+    # FEATURE QUERY TOOLS (Phase 4 Week 4 - 4 Tools)
+    # ========================================================================
+    # Historical Query
+    "query_historical_features",
+    # CSV Export
+    "export_features_csv",
+    # Feature Statistics
+    "get_feature_statistics",
+    # Correlation Analysis
+    "get_feature_correlation_analysis",
 ]

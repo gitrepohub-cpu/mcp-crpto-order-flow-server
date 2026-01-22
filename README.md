@@ -7,7 +7,41 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **217 MCP tools**, **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, and **intelligent model routing** for optimal predictions. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **252 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, and **139 institutional features** with **15 composite signals** for smart money detection. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
+
+---
+
+## 🆕 Phase 4 Complete: Institutional Features & MCP Tool Integration
+
+**35 New MCP Tools** for institutional-grade market analysis:
+
+### Week 1: Per-Stream Feature Tools (15 tools)
+- **Price Features**: `get_price_features`, `get_spread_dynamics`, `get_price_efficiency_metrics`
+- **Orderbook Features**: `get_orderbook_features`, `get_depth_imbalance`, `get_wall_detection`
+- **Trade Features**: `get_trade_features`, `get_cvd_analysis`, `get_whale_detection`
+- **Funding Features**: `get_funding_features`, `get_funding_sentiment`
+- **OI Features**: `get_oi_features`, `get_leverage_risk`
+- **Liquidation/Mark**: `get_liquidation_features`, `get_mark_price_features`
+
+### Week 2: Composite Intelligence Tools (11 tools)
+- **Smart Money**: `get_smart_accumulation_signal`, `get_smart_money_flow`
+- **Squeeze Detection**: `get_short_squeeze_probability`, `get_stop_hunt_detector`
+- **Momentum**: `get_momentum_quality_signal`, `get_momentum_exhaustion`
+- **Risk Assessment**: `get_market_maker_activity`, `get_liquidation_cascade_risk`
+- **Market Intelligence**: `get_institutional_phase`, `get_aggregated_intelligence`, `get_execution_quality`
+
+### Week 3: Visualization Tools (5 tools)
+- `get_feature_candles` - Feature-enriched OHLCV data
+- `get_liquidity_heatmap` - Real-time orderbook depth visualization
+- `get_signal_dashboard` - Composite signal grid
+- `get_regime_visualization` - Market regime timeline
+- `get_correlation_matrix` - Feature correlation analysis
+
+### Week 4: Feature Query Tools (4 tools)
+- `query_historical_features` - Query stored institutional features
+- `export_features_csv` - Export features to CSV for backtesting
+- `get_feature_statistics` - Statistical analysis of feature distributions
+- `get_feature_correlation_analysis` - Cross-stream correlation discovery
 
 ---
 
@@ -54,6 +88,19 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
    - Time-series aggregation and analysis
    - Export capabilities to CSV/Parquet
 
+7. **🏛️ Institutional Feature Engine** *(NEW - Phase 4)*
+   - **139 institutional-grade features** computed in real-time
+   - **15 composite signals** (smart money, squeeze probability, stop hunt)
+   - **8 feature calculators**: prices, orderbook, trades, funding, OI, liquidations, mark prices, ticker
+   - **Signal Aggregator**: AI-powered signal ranking and conflict resolution
+   - **Trade Recommendations**: Automated direction, strength, and risk assessment
+
+8. **📈 35 New MCP Tools** *(Phase 4)*
+   - Per-stream feature analysis (15 tools)
+   - Composite intelligence signals (11 tools)
+   - Real-time visualization (5 tools)
+   - Historical feature queries (4 tools)
+
 7. **🔍 Advanced Analytics**
    - Institutional flow detection
    - Squeeze probability computation
@@ -61,10 +108,10 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
    - Leverage analytics
    - Market regime detection
 
-8. **🛠️ MCP Tools Interface**
-   - **217 AI-assistant-compatible tools**
-   - Organized into 10 categories
-   - Full forecasting, analytics, and streaming control
+9. **🛠️ MCP Tools Interface**
+   - **252 AI-assistant-compatible tools** (35 new in Phase 4)
+   - Organized into 11 categories
+   - Full forecasting, analytics, streaming, and institutional features
 
 ---
 
