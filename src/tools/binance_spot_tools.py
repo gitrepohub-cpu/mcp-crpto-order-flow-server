@@ -104,8 +104,8 @@ async def binance_spot_price(symbol: Optional[str] = None) -> Dict[str, Any]:
                 "timestamp": datetime.now().isoformat()
             }
         else:
-            # Get major pairs
-            major_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"]
+            # Get supported system symbols only
+            major_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ARUSDT"]
             result = await client.get_ticker_price(symbols=major_symbols)
             
             if "error" in result:

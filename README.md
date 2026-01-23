@@ -7,7 +7,7 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **252 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, and **139 institutional features** with **15 composite signals** for smart money detection. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **248 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, **139 institutional features** with **15 composite signals** for smart money detection, and **Sibyl Dashboard** for real-time visualization. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
 
 ---
 
@@ -415,7 +415,55 @@ Expected output:
 
 ---
 
-## 🛠️ MCP Tools (217 Total)
+## �️ Sibyl Dashboard (NEW)
+
+The **Sibyl Dashboard** is a comprehensive visualization frontend for real-time market analytics.
+
+### Features
+- **📊 MCP Dashboard** - Real-time exchange data overview with live prices
+- **🏛️ Institutional Features** - 139 feature visualization with heatmaps
+- **📡 Signal Aggregator** - 15 composite signals (smart money, squeeze, stop hunt)
+- **🎭 Regime Analyzer** - Market regime detection and timeline
+- **🔮 Forecasting Studio** - 38+ AI model predictions with confidence bands
+- **🔬 Feature Explorer** - Deep feature analysis tools
+- **🔀 Cross-Exchange** - Arbitrage opportunity scanner
+- **🌊 Streaming Monitor** - System health and data collection status
+
+### Quick Start (Sibyl Dashboard)
+
+```bash
+# 1. Start the MCP HTTP API (required)
+python -m uvicorn src.http_api:app --host 127.0.0.1 --port 8000
+
+# 2. Start the Sibyl Dashboard (separate terminal)
+streamlit run sibyl_integration/frontend/index_router.py --server.port 8501
+
+# 3. Open browser
+# API: http://localhost:8000
+# Dashboard: http://localhost:8501
+```
+
+### Architecture
+
+```
+┌─────────────┐       ┌─────────────┐       ┌─────────────┐
+│  Exchanges  │──────►│  MCP Server │──────►│  HTTP API   │
+│  (8 total)  │       │  (248 tools)│       │  (FastAPI)  │
+└─────────────┘       └─────────────┘       └──────┬──────┘
+                                                    │
+                                                    ▼
+                                            ┌─────────────┐
+                                            │   Sibyl     │
+                                            │  Dashboard  │
+                                            │ (Streamlit) │
+                                            └─────────────┘
+```
+
+See [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) for complete workflow diagram.
+
+---
+
+## 🛠️ MCP Tools (248 Total)
 
 ### Tool Categories
 
