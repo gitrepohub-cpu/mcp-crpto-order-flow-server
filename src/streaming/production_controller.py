@@ -103,7 +103,7 @@ class ProductionStreamingController:
         # Tasks
         self._tasks: List[asyncio.Task] = []
         
-        logger.info("✅ ProductionStreamingController initialized")
+        logger.info("[OK] ProductionStreamingController initialized")
     
     def _load_config(self, path: str) -> Dict[str, Any]:
         """Load streaming configuration"""
@@ -112,10 +112,10 @@ class ProductionStreamingController:
             if config_path.exists():
                 with open(config_path, 'r') as f:
                     config = json.load(f)
-                logger.info(f"📄 Loaded config from {path}")
+                logger.info(f"[CONFIG] Loaded config from {path}")
                 return config
         except Exception as e:
-            logger.warning(f"⚠️ Could not load config from {path}: {e}")
+            logger.warning(f"[WARN] Could not load config from {path}: {e}")
         
         # Default configuration
         return {
@@ -145,14 +145,14 @@ class ProductionStreamingController:
     async def start(self):
         """Start the production streaming system"""
         if self.is_running:
-            logger.warning("⚠️ Controller is already running")
+            logger.warning("[WARN] Controller is already running")
             return
         
         self.is_running = True
         self.start_time = datetime.now(timezone.utc)
         self.shutdown_event.clear()
         
-        logger.info("🚀 Starting production streaming system...")
+        logger.info("[START] Starting production streaming system...")
         
         symbols = self.config.get("symbols", ["BTCUSDT"])
         exchanges = self.config.get("exchanges", ["binance"])
@@ -227,7 +227,7 @@ class ProductionStreamingController:
             await self._wait_for_tasks()
             
         except Exception as e:
-            logger.error(f"❌ Failed to start streaming: {e}")
+            logger.error(f"[ERROR] Failed to start streaming: {e}")
             traceback.print_exc()
             await self._create_alert(
                 AlertLevel.CRITICAL,
@@ -242,7 +242,7 @@ class ProductionStreamingController:
         if not self.is_running:
             return
         
-        logger.info("🛑 Stopping streaming system...")
+        logger.info("[STOP] Stopping streaming system...")
         self.is_running = False
         self.shutdown_event.set()
         
@@ -265,7 +265,7 @@ class ProductionStreamingController:
             logger.error(f"Error during shutdown: {e}")
         
         self._tasks.clear()
-        logger.info("✅ Streaming system stopped")
+        logger.info("[OK] Streaming system stopped")
     
     async def _wait_for_tasks(self):
         """Wait for tasks or shutdown"""
@@ -277,7 +277,7 @@ class ProductionStreamingController:
     
     async def _collection_loop(self, symbol: str, exchange: str, market_type: str):
         """Data collection loop for a symbol/exchange pair"""
-        logger.info(f"📊 Starting collection for {symbol} on {exchange}")
+        logger.info(f"[COLLECT] Starting collection for {symbol} on {exchange}")
         
         consecutive_errors = 0
         max_consecutive_errors = 10
@@ -318,32 +318,32 @@ class ProductionStreamingController:
                     logger.warning(f"Collection error for {symbol}/{exchange}: {e}")
                     await asyncio.sleep(1)
         
-        logger.info(f"📊 Stopped collection for {symbol} on {exchange}")
+        logger.info(f"Stopped collection for {symbol} on {exchange}")
     
     async def _get_exchange_client(self, exchange: str):
         """Get exchange REST client"""
         try:
             if exchange == "binance":
-                from src.storage.binance_rest_client import BinanceRestClient
-                return BinanceRestClient()
+                from src.storage.binance_rest_client import BinanceFuturesREST
+                return BinanceFuturesREST()
             elif exchange == "bybit":
-                from src.storage.bybit_rest_client import BybitRestClient
-                return BybitRestClient()
+                from src.storage.bybit_rest_client import BybitRESTClient
+                return BybitRESTClient()
             elif exchange == "okx":
-                from src.storage.okx_rest_client import OKXRestClient
-                return OKXRestClient()
+                from src.storage.okx_rest_client import OKXRESTClient
+                return OKXRESTClient()
             elif exchange == "gateio":
-                from src.storage.gateio_rest_client import GateIORestClient
-                return GateIORestClient()
+                from src.storage.gateio_rest_client import GateioRESTClient
+                return GateioRESTClient()
             elif exchange == "kraken":
-                from src.storage.kraken_rest_client import KrakenRestClient
-                return KrakenRestClient()
+                from src.storage.kraken_rest_client import KrakenRESTClient
+                return KrakenRESTClient()
             elif exchange == "deribit":
-                from src.storage.deribit_rest_client import DeribitRestClient
-                return DeribitRestClient()
+                from src.storage.deribit_rest_client import DeribitRESTClient
+                return DeribitRESTClient()
             elif exchange == "hyperliquid":
-                from src.storage.hyperliquid_rest_client import HyperliquidRestClient
-                return HyperliquidRestClient()
+                from src.storage.hyperliquid_rest_client import HyperliquidRESTClient
+                return HyperliquidRESTClient()
             else:
                 logger.warning(f"Unknown exchange: {exchange}")
                 return None
@@ -352,31 +352,116 @@ class ProductionStreamingController:
             return None
     
     async def _collect_data(self, symbol: str, exchange: str, market_type: str, client):
-        """Collect all data streams for a symbol"""
+        """Collect all data streams for a symbol - handles different exchange APIs"""
         try:
-            # Price data
-            price_data = await self._safe_call(client.get_ticker, symbol)
-            if price_data:
+            # Price data - different methods per exchange
+            raw_price = None
+            price_data = None
+            
+            if exchange == "binance":
+                # Get ticker and book ticker for bid/ask
+                ticker = await self._safe_call(client.get_ticker_24hr, symbol)
+                book = await self._safe_call(client.get_book_ticker, symbol)
+                if ticker and symbol in ticker:
+                    t = ticker[symbol]
+                    b = book.get(symbol, {}) if book else {}
+                    price_data = {
+                        'price': t.get('last_price', 0),
+                        'mid_price': t.get('last_price', 0),
+                        'bid': b.get('bid_price', t.get('last_price', 0)),
+                        'ask': b.get('ask_price', t.get('last_price', 0)),
+                        'volume_24h': t.get('quote_volume', 0)
+                    }
+            elif exchange == "bybit":
+                raw_price = await self._safe_call(client.get_tickers, symbol=symbol)
+                if raw_price and raw_price.get('result', {}).get('list'):
+                    t = raw_price['result']['list'][0]
+                    price_data = {
+                        'price': float(t.get('lastPrice', 0)),
+                        'mid_price': float(t.get('lastPrice', 0)),
+                        'bid': float(t.get('bid1Price', 0)),
+                        'ask': float(t.get('ask1Price', 0)),
+                        'volume_24h': float(t.get('turnover24h', 0))
+                    }
+            elif exchange == "okx":
+                raw_price = await self._safe_call(client.get_ticker, symbol)
+                if raw_price and raw_price.get('data'):
+                    t = raw_price['data'][0]
+                    price_data = {
+                        'price': float(t.get('last', 0)),
+                        'mid_price': float(t.get('last', 0)),
+                        'bid': float(t.get('bidPx', 0)),
+                        'ask': float(t.get('askPx', 0)),
+                        'volume_24h': float(t.get('volCcy24h', 0))
+                    }
+            elif exchange == "gateio":
+                raw_price = await self._safe_call(client.get_ticker, symbol)
+                if raw_price:
+                    price_data = {
+                        'price': float(raw_price.get('last', 0)),
+                        'mid_price': float(raw_price.get('last', 0)),
+                        'bid': float(raw_price.get('highest_bid', 0)),
+                        'ask': float(raw_price.get('lowest_ask', 0)),
+                        'volume_24h': float(raw_price.get('quote_volume', 0))
+                    }
+            elif exchange == "hyperliquid":
+                raw_price = await self._safe_call(client.get_ticker, symbol)
+                if raw_price:
+                    price_data = {
+                        'price': float(raw_price.get('markPx', 0) or 0),
+                        'mid_price': float(raw_price.get('markPx', 0) or 0),
+                        'bid': float(raw_price.get('bidPx', 0) or 0),
+                        'ask': float(raw_price.get('askPx', 0) or 0),
+                        'volume_24h': float(raw_price.get('dayNtlVlm', 0) or 0)
+                    }
+            elif exchange == "deribit":
+                raw_price = await self._safe_call(client.get_ticker, symbol)
+                if raw_price and raw_price.get('result'):
+                    t = raw_price['result']
+                    price_data = {
+                        'price': float(t.get('last_price', 0)),
+                        'mid_price': float(t.get('last_price', 0)),
+                        'bid': float(t.get('best_bid_price', 0)),
+                        'ask': float(t.get('best_ask_price', 0)),
+                        'volume_24h': float(t.get('stats', {}).get('volume_usd', 0))
+                    }
+            
+            if price_data and price_data.get('price'):
                 await self.collector.add_price(symbol, exchange, market_type, price_data)
                 self.health.records_ingested += 1
             
-            # Orderbook
+            # Orderbook - most exchanges have get_orderbook
             ob_data = await self._safe_call(client.get_orderbook, symbol)
             if ob_data:
                 await self.collector.add_orderbook(symbol, exchange, market_type, ob_data)
                 self.health.records_ingested += 1
             
-            # Trades
-            trades = await self._safe_call(client.get_recent_trades, symbol)
+            # Trades - different methods per exchange
+            trades = None
+            if exchange == "binance":
+                trades = await self._safe_call(client.get_agg_trades, symbol)
+            elif exchange == "bybit":
+                trades = await self._safe_call(client.get_recent_trades, symbol=symbol)
+            else:
+                trades = await self._safe_call(client.get_recent_trades, symbol)
+            
             if trades:
-                for trade in trades[-10:]:  # Last 10 trades
+                trade_list = trades if isinstance(trades, list) else trades.get('result', {}).get('list', []) if isinstance(trades, dict) else []
+                for trade in trade_list[-10:]:  # Last 10 trades
                     await self.collector.add_trade(symbol, exchange, market_type, trade)
                     self.health.records_ingested += 1
             
             # Futures-specific data
             if market_type == "futures":
-                # Funding rate
-                funding = await self._safe_call(client.get_funding_rate, symbol)
+                # Funding rate - different methods per exchange
+                funding = None
+                if exchange == "binance":
+                    funding = await self._safe_call(client.get_funding_rate, symbol)
+                elif exchange == "bybit":
+                    funding = await self._safe_call(client.get_funding_rate_history, symbol=symbol)
+                else:
+                    funding = await self._safe_call(client.get_funding_rate, symbol)
+                
                 if funding:
                     await self.collector.add_funding_rate(symbol, exchange, market_type, funding)
                     self.health.records_ingested += 1
@@ -387,8 +472,15 @@ class ProductionStreamingController:
                     await self.collector.add_open_interest(symbol, exchange, market_type, oi)
                     self.health.records_ingested += 1
                 
-                # Mark price
-                mark = await self._safe_call(client.get_mark_price, symbol)
+                # Mark price - use premium index for Binance
+                mark = None
+                if exchange == "binance":
+                    mark = await self._safe_call(client.get_premium_index, symbol)
+                elif exchange == "bybit":
+                    mark = await self._safe_call(client.get_tickers, symbol=symbol)  # Has mark price in ticker
+                else:
+                    mark = await self._safe_call(client.get_mark_price, symbol) if hasattr(client, 'get_mark_price') else None
+                
                 if mark:
                     await self.collector.add_mark_price(symbol, exchange, market_type, mark)
                     self.health.records_ingested += 1
@@ -412,7 +504,7 @@ class ProductionStreamingController:
         drift_interval = self.config.get("drift_check_interval_seconds", 600)
         
         logger.info(
-            f"📈 Analytics pipeline started "
+            f"[ANALYTICS] Pipeline started "
             f"(forecast every {forecast_interval}s, drift check every {drift_interval}s)"
         )
         
@@ -448,7 +540,7 @@ class ProductionStreamingController:
                 self.health.errors += 1
                 await asyncio.sleep(5)
         
-        logger.info("📈 Analytics pipeline stopped")
+        logger.info("[ANALYTICS] Analytics pipeline stopped")
     
     async def _generate_forecast(self, symbol: str, exchange: str):
         """Generate forecast for symbol/exchange"""
@@ -474,7 +566,7 @@ class ProductionStreamingController:
             self.health.forecasts_generated += 1
             self.health.last_forecast = datetime.now(timezone.utc)
             
-            logger.info(f"✅ Forecast generated for {symbol}/{exchange} using {decision.model}")
+            logger.info(f"[FORECAST] Generated for {symbol}/{exchange} using {decision.model}")
             
         except Exception as e:
             logger.warning(f"Forecast generation failed for {symbol}/{exchange}: {e}")
@@ -526,7 +618,7 @@ class ProductionStreamingController:
             tuner = HyperparameterTuner()
             # result = await tuner.tune_async(...)
             
-            logger.info(f"✅ Retrain completed for {symbol}/{exchange}")
+            logger.info(f"[RETRAIN] Completed for {symbol}/{exchange}")
             
         except Exception as e:
             logger.error(f"Retrain failed for {symbol}/{exchange}: {e}")
@@ -642,7 +734,7 @@ class ProductionStreamingController:
         
         # Log immediately for critical alerts
         if level in [AlertLevel.HIGH, AlertLevel.CRITICAL]:
-            logger.warning(f"⚠️ ALERT [{level.value}] {source}: {message}")
+            logger.warning(f"[ALERT] [{level.value}] {source}: {message}")
     
     async def _dispatch_alert(self, alert: Alert):
         """Dispatch alert to configured channels"""

@@ -77,7 +77,7 @@ class RealTimeAnalytics:
         self.drift_check_interval = self.config.get("drift_check_interval_seconds", 600)
         self.min_data_points = self.config.get("min_data_points_for_forecast", 100)
         
-        logger.info("✅ RealTimeAnalytics initialized")
+        logger.info("[OK] RealTimeAnalytics initialized")
     
     def get_or_create_stream(self, symbol: str, exchange: str, 
                              market_type: str = "futures") -> StreamState:
@@ -90,7 +90,7 @@ class RealTimeAnalytics:
                 exchange=exchange,
                 market_type=market_type
             )
-            logger.info(f"📊 Created stream state for {key}")
+            logger.info(f"[STREAM] Created stream state for {key}")
         
         return self.streams[key]
     

@@ -13,10 +13,11 @@ Pages:
     - 🏛️ Institutional: 139 institutional features (8 tabs)
     - 🔮 Forecasting: 38+ Darts models
     - 🌊 Streaming: Real-time data monitor
+    - 🤖 Data Ops Crew: Phase 2 CrewAI integration monitoring
     - 🔍 Model Health: Drift detection, CV monitoring
     - 🌐 Cross-Exchange: Arbitrage, correlations
     - 📡 Signals: 15 composite signals
-    - � Features: Feature explorer (40+ features)
+    - 🔬 Features: Feature explorer (40+ features)
     - 🎭 Regimes: Market regime analyzer
 """
 
@@ -40,6 +41,7 @@ from sibyl_integration.frontend.tab_pages.cross_exchange import show_cross_excha
 from sibyl_integration.frontend.tab_pages.signal_aggregator import show_signal_aggregator
 from sibyl_integration.frontend.tab_pages.feature_explorer import show_feature_explorer
 from sibyl_integration.frontend.tab_pages.regime_analyzer import show_regime_analyzer
+from sibyl_integration.frontend.tab_pages.data_ops_crew import show_data_ops_crew
 
 
 def setup_page_config():
@@ -263,6 +265,7 @@ def render_sidebar():
                 "🏛️ Institutional",
                 "🔮 Forecasting",
                 "🌊 Streaming",
+                "🤖 Data Ops Crew",
                 "🔍 Model Health",
                 "🌐 Cross-Exchange",
                 "📡 Signals",
@@ -274,6 +277,7 @@ def render_sidebar():
                 "bank",
                 "magic",
                 "broadcast",
+                "robot",
                 "heart-pulse",
                 "globe",
                 "broadcast-pin",
@@ -348,6 +352,7 @@ def main():
         "🏛️ Institutional": show_institutional_features,
         "🔮 Forecasting": show_forecasting_studio,
         "🌊 Streaming": show_streaming_monitor,
+        "🤖 Data Ops Crew": show_data_ops_crew,
         "🔍 Model Health": show_model_health,
         "🌐 Cross-Exchange": show_cross_exchange,
         "📡 Signals": show_signal_aggregator,

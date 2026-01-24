@@ -1,0 +1,484 @@
+# Phase 2: Data Operations Crew - Task Configurations
+# ====================================================
+# These tasks define the work items for the Data Operations Crew.
+# Tasks are designed for autonomous execution with clear triggers,
+# inputs, outputs, and escalation conditions.
+
+tasks:
+
+  # =========================================================
+  # DATA COLLECTOR AGENT TASKS
+  # =========================================================
+  
+  monitor_exchange_connections:
+    description: |
+      Continuously monitor the health of all 8 exchange connections.
+      Check WebSocket status, REST API availability, and connection latency.
+      
+      Exchanges to monitor:
+      - Binance Futures
+      - Bybit
+      - OKX
+      - Hyperliquid
+      - Gate.io
+      - Kraken
+      - Deribit
+      - Coinbase (if configured)
+      
+      For each exchange, verify:
+      1. WebSocket connection is alive and receiving data
+      2. Last data timestamp is within acceptable freshness (< 5 seconds)
+      3. Latency is within thresholds (< 5 seconds warning, < 30 seconds critical)
+      4. No rate limit errors in last 5 minutes
+    
+    agent: data_collector_agent
+    
+    expected_output: |
+      Connection health report containing:
+      - exchange_status: Dict mapping exchange to status (healthy/degraded/disconnected)
+      - connection_types: Dict mapping exchange to connection type (websocket/rest)
+      - latencies_ms: Dict mapping exchange to current latency
+      - last_data_timestamps: Dict mapping exchange to last received data time
+      - rate_limit_status: Dict mapping exchange to rate limit health
+      - issues_detected: List of any issues requiring attention
+      - recommended_actions: List of suggested actions
+    
+    trigger: "continuous"
+    interval_seconds: 30
+    priority: critical
+    timeout_seconds: 20
+    
+    on_issue_detected:
+      - notify: data_validator_agent
+      - log: agent_audit_log
+      - escalate_if: "critical_condition"
+  
+  handle_exchange_disconnection:
+    description: |
+      Respond to an exchange disconnection event.
+      
+      Steps:
+      1. Log the disconnection event with timestamp and exchange
+      2. Attempt WebSocket reconnection (up to 3 attempts with exponential backoff)
+      3. If reconnection fails, switch to REST fallback mode
+      4. Notify Data Validator to check for data gaps
+      5. Continue monitoring and attempt WebSocket restoration every 5 minutes
+      6. If disconnection persists > 15 minutes, escalate to human
+    
+    agent: data_collector_agent
+    
+    expected_output: |
+      Disconnection handling report:
+      - exchange: Name of affected exchange
+      - disconnection_time: Timestamp of disconnection
+      - reconnection_attempts: Number of attempts made
+      - reconnection_success: Boolean
+      - fallback_mode: Current mode (websocket/rest)
+      - data_gap_start: Start of potential data gap
+      - data_gap_end: End of data gap (or ongoing)
+      - actions_taken: List of remediation actions
+      - escalated: Boolean indicating if human was notified
+    
+    trigger: "event:exchange_disconnection"
+    priority: critical
+    timeout_seconds: 60
+    
+    context:
+      - monitor_exchange_connections
+  
+  request_data_backfill:
+    description: |
+      Request backfill for missing data identified during gap analysis.
+      
+      Steps:
+      1. Receive gap information (exchange, symbol, start_time, end_time)
+      2. Calculate required data points based on data type
+      3. Fetch data via REST API for the gap period
+      4. Validate fetched data before insertion
+      5. Report success/failure to Data Validator
+      6. If backfill fails, notify Data Cleaner for interpolation
+    
+    agent: data_collector_agent
+    
+    expected_output: |
+      Backfill result:
+      - exchange: Exchange name
+      - symbol: Symbol
+      - gap_start: Original gap start
+      - gap_end: Original gap end
+      - records_fetched: Number of records retrieved
+      - records_validated: Number that passed validation
+      - gap_filled: Boolean indicating complete fill
+      - remaining_gap: Any unfilled period
+      - fallback_to_interpolation: Boolean if interpolation needed
+    
+    trigger: "event:backfill_request"
+    priority: high
+    timeout_seconds: 120
+
+  # =========================================================
+  # DATA VALIDATOR AGENT TASKS
+  # =========================================================
+  
+  validate_incoming_data:
+    description: |
+      Validate all incoming data batches against quality rules.
+      
+      Validation checks:
+      1. Price validation: Within 50% of 1-hour moving average
+      2. Orderbook validation: Bid price < Ask price always
+      3. Trade validation: Timestamps monotonically increasing
+      4. Funding rate validation: Between -1% and +1%
+      5. Open interest validation: Non-negative values
+      6. Liquidation validation: Volume matches price * quantity
+      
+      For each validation failure:
+      - Log the failure with full context
+      - Apply appropriate action (quarantine/reject/flag)
+      - Record in data_quality_issues table
+    
+    agent: data_validator_agent
+    
+    expected_output: |
+      Validation report:
+      - batch_id: Identifier for the data batch
+      - total_records: Number of records validated
+      - valid_records: Number passing all checks
+      - quarantined_records: Number quarantined for review
+      - rejected_records: Number rejected
+      - flagged_records: Number flagged for investigation
+      - validation_errors: Detailed list of errors by type
+      - quality_score: Overall batch quality (0-100)
+    
+    trigger: "event:new_data_batch"
+    priority: high
+    timeout_seconds: 30
+  
+  cross_exchange_consistency_check:
+    description: |
+      Verify data consistency across multiple exchanges.
+      
+      Checks performed:
+      1. BTC price spread across exchanges (max 0.5%, alert at 1%)
+      2. ETH price spread across exchanges
+      3. Funding rate convergence over 8-hour window
+      4. Open interest correlation across exchanges
+      
+      Flag any significant discrepancies as either:
+      - Potential data error (single exchange diverging)
+      - Potential arbitrage opportunity (if within normal bounds)
+      - Potential market manipulation (if patterns suggest)
+    
+    agent: data_validator_agent
+    
+    expected_output: |
+      Consistency report:
+      - timestamp: Check timestamp
+      - price_spreads: Dict of symbol to max spread percentage
+      - spread_alerts: List of symbols exceeding thresholds
+      - funding_divergences: List of exchange pairs with divergent funding
+      - anomaly_indicators: List of potential data errors
+      - arbitrage_indicators: List of potential arb opportunities
+      - manipulation_flags: List of suspicious patterns
+    
+    trigger: "continuous"
+    interval_seconds: 60
+    priority: medium
+    timeout_seconds: 45
+  
+  detect_and_handle_anomaly:
+    description: |
+      Respond to detected data anomaly.
+      
+      Steps:
+      1. Receive anomaly details (exchange, symbol, data_type, value, expected_range)
+      2. Cross-validate against other exchanges
+      3. Determine if anomaly is:
+         - Data error (quarantine and request re-fetch)
+         - Exchange issue (log and monitor)
+         - Genuine market event (validate and accept)
+      4. Apply appropriate handling
+      5. Log to data_quality_issues table
+      6. Notify relevant agents
+    
+    agent: data_validator_agent
+    
+    expected_output: |
+      Anomaly handling report:
+      - anomaly_id: Unique identifier
+      - detection_time: When anomaly was detected
+      - exchange: Source exchange
+      - symbol: Affected symbol
+      - data_type: Type of data (price/volume/etc)
+      - anomalous_value: The problematic value
+      - expected_range: What was expected
+      - cross_validation_result: Comparison with other exchanges
+      - classification: error/exchange_issue/genuine_event
+      - action_taken: quarantine/accept/request_refetch
+      - notifications_sent: List of notified agents
+    
+    trigger: "event:anomaly_detected"
+    priority: critical
+    timeout_seconds: 30
+
+  # =========================================================
+  # DATA CLEANER AGENT TASKS
+  # =========================================================
+  
+  handle_missing_data:
+    description: |
+      Handle missing data through appropriate interpolation or marking.
+      
+      Interpolation strategies by data type:
+      - Prices (gap < 5min): Linear interpolation
+      - Prices (gap >= 5min): Last known value (no fabrication)
+      - Orderbooks: Mark as missing (no interpolation)
+      - Trades: Mark as missing (cannot fabricate)
+      - Funding rates: Forward fill
+      - Open interest: Linear interpolation
+      
+      Steps:
+      1. Receive missing data notification (exchange, symbol, data_type, gap_period)
+      2. Determine appropriate strategy based on data type and gap size
+      3. Apply interpolation or marking
+      4. Log to interpolation_log table
+      5. Notify downstream systems of data status
+    
+    agent: data_cleaner_agent
+    
+    expected_output: |
+      Interpolation report:
+      - gap_id: Unique identifier for this gap
+      - exchange: Source exchange
+      - symbol: Affected symbol
+      - data_type: Type of data
+      - gap_start: Gap start timestamp
+      - gap_end: Gap end timestamp
+      - gap_duration_seconds: Duration in seconds
+      - strategy_used: Interpolation method applied
+      - records_created: Number of interpolated records
+      - confidence_score: Confidence in interpolated data (0-100)
+      - logged_to: Table where interpolation was logged
+    
+    trigger: "event:missing_data_identified"
+    priority: high
+    timeout_seconds: 60
+  
+  aggregate_to_timeframes:
+    description: |
+      Aggregate raw tick data into standard OHLCV timeframes.
+      
+      Timeframes to generate:
+      - 1 minute
+      - 5 minutes
+      - 15 minutes
+      - 1 hour
+      - 4 hours
+      - 1 day
+      
+      For each timeframe:
+      1. Collect all ticks within the period
+      2. Calculate OHLCV (Open, High, Low, Close, Volume)
+      3. Calculate VWAP (Volume-Weighted Average Price)
+      4. Count number of trades
+      5. Store in appropriate aggregated table
+    
+    agent: data_cleaner_agent
+    
+    expected_output: |
+      Aggregation report:
+      - symbol: Aggregated symbol
+      - exchange: Source exchange
+      - timeframe: Target timeframe
+      - period_start: Aggregation period start
+      - period_end: Aggregation period end
+      - records_aggregated: Number of raw records used
+      - ohlcv_generated: Boolean
+      - vwap_calculated: Boolean
+      - stored_to_table: Target table name
+    
+    trigger: "continuous"
+    interval_seconds: 60
+    priority: medium
+    timeout_seconds: 45
+  
+  normalize_exchange_data:
+    description: |
+      Normalize data formats across different exchanges.
+      
+      Normalizations applied:
+      1. Timestamps: Convert all to UTC milliseconds
+      2. Prices: Standardize decimal precision (8 decimals for crypto)
+      3. Volumes: Convert to base asset quantities
+      4. Symbols: Standardize format (e.g., BTC-USD -> BTCUSD)
+      5. Side indicators: Standardize to 'buy'/'sell'
+      
+      Create normalized copies in _normalized tables.
+    
+    agent: data_cleaner_agent
+    
+    expected_output: |
+      Normalization report:
+      - exchange: Source exchange
+      - records_processed: Number of records
+      - timestamp_conversions: Count
+      - price_precision_adjustments: Count
+      - volume_conversions: Count
+      - symbol_standardizations: Count
+      - normalized_table: Target table name
+      - errors_encountered: List of any conversion errors
+    
+    trigger: "event:new_data_batch"
+    priority: medium
+    timeout_seconds: 60
+
+  # =========================================================
+  # SCHEMA MANAGER AGENT TASKS
+  # =========================================================
+  
+  monitor_table_health:
+    description: |
+      Monitor health metrics for all 504 DuckDB tables.
+      
+      Metrics to collect:
+      1. Table size (bytes and rows)
+      2. Row count growth rate
+      3. Last write timestamp
+      4. Query latency (sample queries)
+      5. Fragmentation estimate
+      
+      Thresholds:
+      - Size: Warning at 10GB, Critical at 50GB
+      - Growth: Warning at 1M/day, Critical at 10M/day
+      - Latency: Warning at 1s, Critical at 10s
+      - Fragmentation: Warning at 30%, Critical at 50%
+    
+    agent: schema_manager_agent
+    
+    expected_output: |
+      Table health report:
+      - timestamp: Report timestamp
+      - total_tables: Number of tables monitored
+      - healthy_tables: Count with no issues
+      - warning_tables: Count with warnings
+      - critical_tables: Count with critical issues
+      - table_details: Dict mapping table to health metrics
+      - recommendations: List of optimization recommendations
+      - urgent_actions: List of actions needed immediately
+    
+    trigger: "continuous"
+    interval_seconds: 300  # Every 5 minutes
+    priority: medium
+    timeout_seconds: 120
+  
+  optimize_table_performance:
+    description: |
+      Execute maintenance operations on tables needing optimization.
+      
+      Operations:
+      1. VACUUM: For tables with >30% fragmentation
+      2. ANALYZE: For tables with stale statistics
+      3. Recommend indexing: For frequently queried columns
+      
+      Note: Index creation requires human approval.
+    
+    agent: schema_manager_agent
+    
+    expected_output: |
+      Optimization report:
+      - tables_vacuumed: List of tables
+      - tables_analyzed: List of tables
+      - index_recommendations: List of (table, column) pairs
+      - space_recovered_mb: Estimated space saved
+      - performance_improvement: Estimated query speedup
+      - pending_approvals: Actions requiring human approval
+    
+    trigger: "event:optimization_needed"
+    priority: low
+    timeout_seconds: 300
+  
+  alert_on_capacity_issues:
+    description: |
+      Alert when tables or storage approach capacity limits.
+      
+      Checks:
+      1. Individual table size vs limits
+      2. Total database size vs storage quota
+      3. Growth rate projections
+      4. Archive candidates (data older than retention period)
+    
+    agent: schema_manager_agent
+    
+    expected_output: |
+      Capacity alert:
+      - alert_level: warning/critical
+      - current_total_size_gb: Total database size
+      - storage_limit_gb: Configured limit
+      - utilization_percent: Current utilization
+      - largest_tables: Top 10 tables by size
+      - fastest_growing: Top 5 by growth rate
+      - archive_candidates: Tables eligible for archival
+      - days_until_full: Projected days until capacity
+      - recommended_actions: Prioritized action list
+    
+    trigger: "continuous"
+    interval_seconds: 3600  # Hourly
+    priority: medium
+    timeout_seconds: 60
+
+  # =========================================================
+  # CREW-LEVEL COORDINATION TASKS
+  # =========================================================
+  
+  generate_data_quality_report:
+    description: |
+      Generate comprehensive data quality report for the crew.
+      
+      Aggregates metrics from all agents:
+      - Collection success rates by exchange
+      - Validation pass/fail rates
+      - Anomaly detection statistics
+      - Interpolation frequency
+      - Schema health summary
+      
+      This report is used for crew performance monitoring and
+      weekly reports to stakeholders.
+    
+    agent: data_validator_agent
+    
+    expected_output: |
+      Data quality report:
+      - report_period: Start and end timestamps
+      - collection_metrics:
+          records_collected: Total count
+          by_exchange: Dict of exchange to count
+          success_rate: Percentage
+      - validation_metrics:
+          records_validated: Total count
+          pass_rate: Percentage
+          quarantine_rate: Percentage
+          rejection_rate: Percentage
+      - anomaly_metrics:
+          anomalies_detected: Count
+          by_type: Dict of anomaly type to count
+          resolution_rate: Percentage
+      - interpolation_metrics:
+          gaps_filled: Count
+          interpolated_records: Count
+          by_data_type: Dict of type to count
+      - schema_metrics:
+          tables_monitored: Count
+          tables_healthy: Count
+          optimizations_performed: Count
+      - overall_quality_score: 0-100
+    
+    trigger: "scheduled"
+    schedule: "0 * * * *"  # Every hour
+    priority: low
+    timeout_seconds: 120
+    
+    context:
+      - validate_incoming_data
+      - cross_exchange_consistency_check
+      - handle_missing_data
+      - monitor_table_health

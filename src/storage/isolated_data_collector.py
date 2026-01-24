@@ -73,17 +73,17 @@ class IsolatedDataCollector:
     def register_price_callback(self, callback: Callable):
         """Register callback for price updates (for real-time analytics)"""
         self._on_price_callbacks.append(callback)
-        logger.info(f"📊 Registered price callback: {callback.__name__}")
+        logger.info(f"[CALLBACK] Registered price callback: {callback.__name__}")
     
     def register_trade_callback(self, callback: Callable):
         """Register callback for trade updates"""
         self._on_trade_callbacks.append(callback)
-        logger.info(f"📊 Registered trade callback: {callback.__name__}")
+        logger.info(f"[CALLBACK] Registered trade callback: {callback.__name__}")
     
     def register_data_callback(self, callback: Callable):
         """Register callback for all data updates"""
         self._on_data_callbacks.append(callback)
-        logger.info(f"📊 Registered data callback: {callback.__name__}")
+        logger.info(f"[CALLBACK] Registered data callback: {callback.__name__}")
     
     async def _notify_price_callbacks(self, symbol: str, exchange: str, 
                                        market_type: str, data: dict):
@@ -110,8 +110,17 @@ class IsolatedDataCollector:
                 logger.warning(f"Trade callback error: {e}")
     
     def connect(self):
-        """Connect to DuckDB."""
-        self.conn = duckdb.connect(self.db_path)
+        """Connect to DuckDB with proper settings for concurrent access."""
+        import os
+        
+        # Create data directory if it doesn't exist
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        
+        # Connect with settings that allow concurrent access
+        # Using a config that doesn't hold exclusive locks
+        self.conn = duckdb.connect(self.db_path, config={'access_mode': 'automatic'})
         
         # Load existing table names into a set for fast lookup
         self.existing_tables = set()
@@ -139,7 +148,7 @@ class IsolatedDataCollector:
                 logger.debug(f"Could not get max ID for {table_name}: {e}")
                 self.id_counters[table_name] = 0
         
-        logger.info(f"✅ Connected to ISOLATED database: {self.db_path}")
+        logger.info(f"[OK] Connected to ISOLATED database: {self.db_path}")
         logger.info(f"   Loaded {len(self.id_counters)} table ID counters")
         logger.info(f"   {len(self.existing_tables)} existing tables")
     
@@ -190,6 +199,11 @@ class IsolatedDataCollector:
             
             if bid and ask and not mid:
                 mid = (bid + ask) / 2
+            
+            # IMPORTANT: Skip if mid_price is None or 0 - it's NOT NULL in schema
+            if not mid or mid <= 0:
+                logger.debug(f"Skipping price record with invalid mid_price: {mid} for {table_name}")
+                return
             
             spread = (ask - bid) if (bid and ask) else None
             spread_bps = (spread / mid * 10000) if (spread and mid and mid > 0) else None
@@ -649,11 +663,11 @@ class IsolatedDataCollector:
             
             # Log if there are failed tables
             if failed_tables:
-                logger.warning(f"⚠️ {len(failed_tables)} tables failed to flush, will retry: {failed_tables[:5]}...")
+                logger.warning(f"[WARN] {len(failed_tables)} tables failed to flush, will retry: {failed_tables[:5]}...")
             
             duration_ms = (time.time() - start_time) * 1000
             if flushed > 0:
-                logger.info(f"💾 Flushed {flushed:,} records to {tables_flushed} tables in {duration_ms:.1f}ms")
+                logger.info(f"[FLUSH] Flushed {flushed:,} records to {tables_flushed} tables in {duration_ms:.1f}ms")
             
             self.stats['last_flush'] = datetime.now(timezone.utc)
             return flushed, tables_flushed

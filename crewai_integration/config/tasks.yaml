@@ -1,0 +1,141 @@
+# CrewAI Task Configurations
+# Phase 1 - Foundation & Infrastructure
+# =====================================
+
+tasks:
+
+  # Data Collection Tasks
+  collect_market_data:
+    description: |
+      Collect current market data from all supported exchanges.
+      Gather ticker data, orderbook snapshots, and recent trades.
+      Ensure data is fresh (within last 5 seconds) and validated.
+    agent: data_acquisition_agent
+    expected_output: |
+      JSON object containing:
+      - ticker data from all exchanges
+      - orderbook depth (top 10 levels)
+      - data freshness timestamps
+      - any collection errors encountered
+    async_execution: true
+    priority: high
+    timeout_seconds: 30
+
+  validate_collected_data:
+    description: |
+      Validate the collected market data for quality and consistency.
+      Check for missing fields, outliers, and cross-exchange discrepancies.
+      Flag any data quality issues for review.
+    agent: data_quality_agent
+    expected_output: |
+      Validation report containing:
+      - data quality score (0-100)
+      - list of identified issues
+      - cross-exchange consistency check
+      - recommendations for data handling
+    context:
+      - collect_market_data
+    priority: high
+    timeout_seconds: 20
+
+  # Forecasting Tasks
+  generate_price_forecast:
+    description: |
+      Generate short-term price forecasts for specified symbols.
+      Use ensemble of models (LSTM, statistical, regime-aware).
+      Provide confidence intervals and model agreement metrics.
+    agent: forecasting_agent
+    expected_output: |
+      Forecast report containing:
+      - price predictions (1h, 4h, 24h horizons)
+      - confidence intervals (68%, 95%)
+      - model agreement score
+      - key drivers of forecast
+    async_execution: true
+    priority: medium
+    timeout_seconds: 60
+
+  detect_current_regime:
+    description: |
+      Identify the current market regime for specified symbols.
+      Classify as trending (up/down), ranging, or high volatility.
+      Detect any recent regime transitions.
+    agent: regime_detection_agent
+    expected_output: |
+      Regime analysis containing:
+      - current regime classification
+      - regime confidence score
+      - time since last regime change
+      - probability of near-term regime shift
+    priority: medium
+    timeout_seconds: 30
+
+  # Intelligence Tasks
+  analyze_institutional_flow:
+    description: |
+      Analyze order flow for signs of institutional activity.
+      Look for large block trades, accumulation patterns, and OI changes.
+      Identify potential smart money positioning.
+    agent: institutional_flow_agent
+    expected_output: |
+      Institutional flow report containing:
+      - detected large player activity
+      - accumulation/distribution signals
+      - open interest analysis
+      - funding rate implications
+    priority: medium
+    timeout_seconds: 45
+
+  assess_market_risks:
+    description: |
+      Evaluate current market risk levels and potential scenarios.
+      Calculate leverage ratios and liquidation cluster levels.
+      Identify key risk factors and potential triggers.
+    agent: risk_assessment_agent
+    expected_output: |
+      Risk assessment containing:
+      - overall risk score (1-10)
+      - leverage analysis
+      - key liquidation levels
+      - scenario analysis (bull/bear/black swan)
+    context:
+      - detect_current_regime
+    priority: high
+    timeout_seconds: 45
+
+  # Operations Tasks
+  monitor_system_health:
+    description: |
+      Check the health of all system components.
+      Verify data streams are active and within latency thresholds.
+      Check database connections and API rate limit status.
+    agent: system_health_agent
+    expected_output: |
+      Health report containing:
+      - overall system status (healthy/degraded/critical)
+      - component status details
+      - recent errors or warnings
+      - resource utilization metrics
+    priority: high
+    timeout_seconds: 15
+
+  # Research Tasks
+  compile_market_briefing:
+    description: |
+      Compile a comprehensive market briefing from all analyses.
+      Synthesize forecasts, regime analysis, flow analysis, and risks.
+      Provide actionable insights and key levels to watch.
+    agent: market_researcher_agent
+    expected_output: |
+      Market briefing containing:
+      - executive summary
+      - key price levels and targets
+      - risk factors to monitor
+      - recommended actions (if any)
+    context:
+      - generate_price_forecast
+      - detect_current_regime
+      - analyze_institutional_flow
+      - assess_market_risks
+    priority: medium
+    timeout_seconds: 90

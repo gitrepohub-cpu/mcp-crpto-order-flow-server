@@ -1,0 +1,245 @@
+# Phase 2: Data Operations Crew Configuration
+# =============================================
+# This crew manages the entire data collection infrastructure autonomously.
+# It uses a hierarchical process where the Data Collector acts as orchestrator.
+
+crew:
+  data_operations_crew:
+    name: "Data Operations Crew"
+    description: |
+      The Data Operations Crew is responsible for autonomous management of the 
+      entire data collection infrastructure. It monitors 8 exchanges, validates 
+      incoming data, handles data quality issues, and maintains schema health 
+      across 504 DuckDB tables.
+      
+      This crew operates 24/7 without human intervention for routine operations,
+      escalating only genuinely complex issues that require human judgment.
+    
+    # Crew composition
+    agents:
+      - data_collector_agent    # Orchestrator - manages data flow
+      - data_validator_agent    # Quality assurance
+      - data_cleaner_agent      # Data transformation
+      - schema_manager_agent    # Database health
+    
+    # Process configuration
+    process: "hierarchical"
+    manager_agent: data_collector_agent
+    
+    # Process rationale
+    process_rationale: |
+      Hierarchical process is used because data collection is time-sensitive.
+      The Data Collector must maintain real-time data flow and cannot wait for
+      lengthy consensus processes. It makes decisions quickly and delegates
+      detailed work to specialized agents.
+    
+    # Memory and learning
+    memory: true
+    memory_config:
+      short_term_memory: true    # Remember recent interactions
+      long_term_memory: true     # Learn from past incidents
+      entity_memory: true        # Track exchange and symbol entities
+      knowledge_base: true       # Store learned patterns
+    
+    # Rate limiting
+    max_rpm: 60  # Max requests per minute to LLM
+    
+    # Execution configuration
+    verbose: true
+    full_output: true
+    
+    # Task assignment
+    tasks:
+      # Data Collector tasks
+      - monitor_exchange_connections
+      - handle_exchange_disconnection
+      - request_data_backfill
+      
+      # Data Validator tasks
+      - validate_incoming_data
+      - cross_exchange_consistency_check
+      - detect_and_handle_anomaly
+      
+      # Data Cleaner tasks
+      - handle_missing_data
+      - aggregate_to_timeframes
+      - normalize_exchange_data
+      
+      # Schema Manager tasks
+      - monitor_table_health
+      - optimize_table_performance
+      - alert_on_capacity_issues
+      
+      # Crew-level tasks
+      - generate_data_quality_report
+    
+    # Callbacks
+    callbacks:
+      on_task_start: "log_task_start"
+      on_task_complete: "log_task_completion"
+      on_task_error: "handle_task_error"
+      on_crew_complete: "generate_crew_summary"
+      on_escalation: "notify_human"
+    
+    # Shared resources
+    shared_resources:
+      - streaming_controller    # ProductionStreamingController instance
+      - duckdb_connection       # DuckDB connection pool
+      - audit_logger           # Audit log writer
+    
+    # Communication patterns
+    communication:
+      # Agent-to-agent communication triggers
+      patterns:
+        - trigger: "new_data_batch"
+          from: data_collector_agent
+          to: data_validator_agent
+          message_type: "validate_request"
+        
+        - trigger: "anomaly_detected"
+          from: data_validator_agent
+          to: data_cleaner_agent
+          message_type: "handle_anomaly"
+        
+        - trigger: "missing_data_found"
+          from: data_validator_agent
+          to: data_collector_agent
+          message_type: "backfill_request"
+        
+        - trigger: "table_capacity_warning"
+          from: schema_manager_agent
+          to: all
+          message_type: "reduce_write_frequency"
+        
+        - trigger: "connection_restored"
+          from: data_collector_agent
+          to: data_validator_agent
+          message_type: "verify_continuity"
+    
+    # Escalation configuration
+    escalation:
+      levels:
+        low:
+          threshold: "anomaly_rate > 2%"
+          action: "log_only"
+        
+        medium:
+          threshold: "anomaly_rate > 5% OR storage > 80%"
+          action: "email_notification"
+          recipients: ["data-ops@company.com"]
+        
+        high:
+          threshold: "data_gap > 1_hour OR anomaly_rate > 10%"
+          action: "email_and_slack"
+          channels: ["#data-alerts"]
+        
+        critical:
+          threshold: "exchanges_down > 3 OR data_gap > 4_hours"
+          action: "page_oncall"
+          pause_trading_signals: true
+    
+    # Guardrails
+    guardrails:
+      prohibited_actions:
+        - "delete_any_data"
+        - "modify_historical_records"
+        - "change_tracked_symbols"
+        - "disable_exchange_permanently"
+        - "modify_rate_limits_beyond_50pct"
+      
+      requires_human_approval:
+        - "add_new_exchange"
+        - "remove_symbol_from_tracking"
+        - "archive_data_older_than_90_days"
+        - "change_validation_thresholds"
+        - "increase_storage_allocation"
+        - "create_database_index"
+        - "drop_table"
+        - "modify_schema"
+    
+    # Monitoring configuration
+    monitoring:
+      metrics:
+        - name: "records_per_minute"
+          target: 7000
+          alert_below: 5000
+        
+        - name: "connection_uptime_percent"
+          target: 99.9
+          alert_below: 99.0
+        
+        - name: "avg_latency_ms"
+          target: 1000
+          alert_above: 5000
+        
+        - name: "anomaly_rate_percent"
+          target: 0.1
+          alert_above: 1.0
+        
+        - name: "validation_pass_rate"
+          target: 99.5
+          alert_below: 98.0
+      
+      dashboard_refresh_seconds: 30
+      
+      weekly_report:
+        enabled: true
+        schedule: "0 9 * * MON"  # Every Monday at 9 AM
+        recipients: ["data-team@company.com"]
+        include:
+          - total_records_collected
+          - data_quality_summary
+          - incident_log
+          - performance_trends
+          - recommendations
+
+# Integration with existing system
+integration:
+  
+  # Connection to ProductionStreamingController
+  streaming_controller:
+    supervision_model: "supervisory"
+    description: |
+      The Data Operations Crew operates as a supervisory layer over the
+      existing ProductionStreamingController. The controller continues to
+      execute data collection while the crew monitors, adjusts, and responds
+      to issues.
+    
+    interactions:
+      - method: "get_streaming_health"
+        purpose: "Monitor controller health"
+        frequency: "every 30 seconds"
+      
+      - method: "start_streaming"
+        purpose: "Restart failed connections"
+        requires: "disconnection_detected"
+      
+      - method: "stop_streaming"
+        purpose: "Stop problematic streams"
+        requires: "critical_issue"
+  
+  # DuckDB table interactions
+  duckdb:
+    read_access: "all_agents"
+    write_access:
+      data_collector_agent: "via_streaming_tools_only"
+      data_validator_agent: "validation_status_column"
+      data_cleaner_agent: "_cleaned_variant_tables"
+      schema_manager_agent: "optimization_commands_only"
+    
+    new_tables:
+      - name: "agent_audit_log"
+        purpose: "All agent actions logged here"
+        written_by: "all_agents"
+      
+      - name: "data_quality_issues"
+        purpose: "Detected anomalies and issues"
+        written_by: "data_validator_agent"
+      
+      - name: "interpolation_log"
+        purpose: "Records of data interpolation"
+        written_by: "data_cleaner_agent"
+      
+      - name: "schema_health_metrics"
+        purpose: "Table performance metrics"
+        written_by: "schema_manager_agent"

@@ -1,0 +1,69 @@
+# CrewAI System Configuration
+# Phase 1 - Foundation & Infrastructure
+# =====================================
+
+version: "1.0.0"
+environment: "development"
+phase: "foundation"
+
+# LLM Configuration
+llm:
+  model: "gpt-4"
+  temperature: 0.7
+  max_tokens: 4096
+  timeout_seconds: 30
+
+# Rate Limits (calls per second)
+rate_limits:
+  default: 0.5
+  exchanges:
+    binance: 0.5
+    bybit: 0.33
+    okx: 0.5
+    hyperliquid: 1.0
+    gateio: 0.5
+    kraken: 0.33
+    deribit: 0.5
+
+# Database Configuration
+database:
+  state_db_path: "data/crewai_state.duckdb"
+  market_db_path: "data/crypto_orderflow.duckdb"
+  connection_pool_size: 5
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/crewai.log"
+
+# Feature Flags
+features:
+  shadow_mode: true
+  human_approval_required:
+    - streaming_control
+    - system_config
+    - database_write
+  max_concurrent_agents: 5
+  max_tool_invocations_per_minute: 60
+  enable_telemetry: true
+
+# Guardrails
+guardrails:
+  max_api_calls_per_minute: 100
+  max_decisions_per_agent_per_hour: 1000
+  require_confirmation_above_confidence: 0.95
+  alert_on_anomaly_detection: true
+
+# Memory Settings
+memory:
+  short_term_ttl_hours: 1
+  working_memory_ttl_hours: 24
+  cleanup_interval_hours: 6
+  max_memory_entries_per_agent: 1000
+
+# Event Bus Settings
+events:
+  max_history_size: 10000
+  processing_batch_size: 100
+  async_processing: true

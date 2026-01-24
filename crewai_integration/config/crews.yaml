@@ -1,0 +1,122 @@
+# CrewAI Crew Configurations
+# Phase 1 - Foundation & Infrastructure
+# =====================================
+
+crews:
+
+  # Data Collection Crew
+  data_crew:
+    description: "Responsible for market data collection and quality assurance"
+    agents:
+      - data_acquisition_agent
+      - data_quality_agent
+    process: sequential
+    verbose: true
+    memory: true
+    max_rpm: 30
+    tasks:
+      - collect_market_data
+      - validate_collected_data
+    manager_llm: null  # No manager for sequential process
+    callbacks:
+      on_task_complete: "log_task_completion"
+      on_error: "handle_crew_error"
+
+  # Analytics Crew
+  analytics_crew:
+    description: "Responsible for forecasting and market regime analysis"
+    agents:
+      - forecasting_agent
+      - regime_detection_agent
+    process: parallel
+    verbose: true
+    memory: true
+    max_rpm: 20
+    tasks:
+      - generate_price_forecast
+      - detect_current_regime
+    share_crew: true
+    callbacks:
+      on_task_complete: "log_task_completion"
+      on_error: "handle_crew_error"
+
+  # Intelligence Crew
+  intelligence_crew:
+    description: "Responsible for order flow and risk analysis"
+    agents:
+      - institutional_flow_agent
+      - risk_assessment_agent
+    process: sequential
+    verbose: true
+    memory: true
+    max_rpm: 15
+    tasks:
+      - analyze_institutional_flow
+      - assess_market_risks
+    callbacks:
+      on_task_complete: "log_task_completion"
+      on_error: "handle_crew_error"
+
+  # Operations Crew
+  operations_crew:
+    description: "Responsible for system monitoring and maintenance"
+    agents:
+      - system_health_agent
+    process: sequential
+    verbose: true
+    memory: false
+    max_rpm: 60
+    tasks:
+      - monitor_system_health
+    callbacks:
+      on_task_complete: "log_health_check"
+      on_error: "alert_ops_team"
+
+  # Research Crew
+  research_crew:
+    description: "Responsible for market research and report compilation"
+    agents:
+      - market_researcher_agent
+    process: sequential
+    verbose: true
+    memory: true
+    max_rpm: 10
+    tasks:
+      - compile_market_briefing
+    depends_on:
+      - analytics_crew
+      - intelligence_crew
+    callbacks:
+      on_task_complete: "publish_briefing"
+      on_error: "handle_crew_error"
+
+# Crew Orchestration Flows
+flows:
+
+  # Full Market Analysis Flow
+  full_market_analysis:
+    description: "Complete market analysis pipeline"
+    crews_sequence:
+      - data_crew
+      - analytics_crew
+      - intelligence_crew
+      - research_crew
+    schedule: "*/15 * * * *"  # Every 15 minutes
+    enabled: false  # Disabled in Phase 1
+
+  # Quick Health Check Flow
+  health_check:
+    description: "System health monitoring"
+    crews_sequence:
+      - operations_crew
+    schedule: "* * * * *"  # Every minute
+    enabled: true
+
+  # On-Demand Analysis Flow
+  on_demand_analysis:
+    description: "Triggered analysis on specific symbol"
+    crews_sequence:
+      - data_crew
+      - analytics_crew
+    enabled: true
+    trigger: "manual"

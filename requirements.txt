@@ -21,3 +21,7 @@ duckdb>=0.9.0
 # Data Processing
 pandas>=1.5.0
 numpy>=1.23.0
+
+# CrewAI Integration (Phase 1)
+crewai>=0.28.0
+pyyaml>=6.0

@@ -7,7 +7,7 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **248 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, **139 institutional features** with **15 composite signals** for smart money detection, and **Sibyl Dashboard** for real-time visualization. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **252 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, **139 institutional features** with **15 composite signals** for smart money detection, **Sibyl Dashboard** for real-time visualization, and **CrewAI Data Operations Crew** with 4 specialized agents. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
 
 ---
 
@@ -112,6 +112,254 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
    - **252 AI-assistant-compatible tools** (35 new in Phase 4)
    - Organized into 11 categories
    - Full forecasting, analytics, streaming, and institutional features
+
+10. **🤖 CrewAI Integration** *(Phase 1 Foundation + Phase 2 Data Ops)*
+    - Multi-agent orchestration framework for autonomous analysis
+    - 8 specialized AI agents with role-based permissions
+    - 5 crews: Data, Analytics, Intelligence, Operations, Research
+    - Shadow mode for safe testing alongside live system
+    - Event-driven communication and state management
+
+11. **🔄 Phase 2: Data Operations Crew** *(NEW)*
+    - 4 specialized agents: DataCollector, DataValidator, DataCleaner, SchemaManager
+    - **StreamingControllerBridge**: Real-time connection to Phase 1 streaming
+    - **DuckDBHistoricalAccess**: Query historical data from 504 tables
+    - **DataOpsMetricsCollector**: Track agent actions, quality issues, escalations
+    - **Autonomous Behaviors**: auto_reconnect, auto_validation, gap_detection, schema_optimize
+    - **EventBus Integration**: DATA_RECEIVED, STREAM_STATUS, QUALITY_ALERT, AGENT_ACTION
+    - **100% Test Coverage**: 27/27 integration tests passing
+
+---
+
+## 📊 System Data Flow Diagram
+
+For a comprehensive visual representation of the entire system architecture, data flows, and integration points, see:
+
+**📄 [DATA_FLOW_DIAGRAM.md](DATA_FLOW_DIAGRAM.md)** - Complete data flow visualization including:
+- External data sources (8 exchanges)
+- Phase 1 MCP Server & Streaming Layer (252+ tools)
+- Phase 2 CrewAI Data Operations Crew (4 agents)
+- Storage Layer (504 DuckDB tables)
+- Visualization Layer (Sibyl Dashboard)
+- Debug points and common issues
+
+---
+
+## 🤖 CrewAI Integration (Phase 1 - Foundation)
+
+The system now includes a comprehensive CrewAI integration layer for multi-agent autonomous market analysis.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     CrewAI Controller                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ Data Crew   │  │Analytics Crew│  │ Intel Crew  │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+├─────────────────────────────────────────────────────────────┤
+│                      Event Bus                               │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │Tool Wrappers│  │State Manager│  │ Config Loader│         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+├─────────────────────────────────────────────────────────────┤
+│                   MCP Server (248+ Tools)                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### AI Agents (8 Specialized Agents)
+
+| Agent | Crew | Role |
+|-------|------|------|
+| **data_acquisition_agent** | Data | Collects market data from 8 exchanges |
+| **data_quality_agent** | Data | Validates data quality and detects anomalies |
+| **forecasting_agent** | Analytics | Generates ML-powered price forecasts |
+| **regime_detection_agent** | Analytics | Identifies market regimes |
+| **institutional_flow_agent** | Intelligence | Detects smart money activity |
+| **risk_assessment_agent** | Intelligence | Evaluates market risks |
+| **system_health_agent** | Operations | Monitors system health |
+| **market_researcher_agent** | Research | Compiles market briefings |
+
+### Quick Start with CrewAI
+
+```python
+from crewai_integration import CrewAIController
+
+# Initialize controller
+controller = CrewAIController()
+await controller.initialize()
+
+# Start in shadow mode (safe testing)
+await controller.start(shadow_mode=True)
+
+# Check health
+health = await controller.get_health()
+print(f"Status: {health['status']}")
+print(f"Agents: {health['agents_registered']}")
+print(f"Tools: {health['tools_registered']}")
+
+# Stop gracefully
+await controller.stop()
+```
+
+### Run Tests
+
+```bash
+# Unit tests
+python -m crewai_integration.tests.unit_tests
+
+# Integration tests
+python -m crewai_integration.tests.integration_tests
+
+# Performance benchmarks
+python -m crewai_integration.tests.benchmarks
+```
+
+### Configuration
+
+Configuration files in `crewai_integration/config/`:
+- `system.yaml` - System settings, rate limits, features
+- `agents.yaml` - Agent definitions and tools
+- `tasks.yaml` - Task descriptions and workflows
+- `crews.yaml` - Crew compositions and flows
+
+### Documentation
+
+Full documentation in `crewai_integration/docs/`:
+- [Main Documentation](crewai_integration/docs/README.md)
+- [Tool Wrapper Reference](crewai_integration/docs/TOOL_WRAPPER_REFERENCE.md)
+- [State Management Guide](crewai_integration/docs/STATE_MANAGEMENT_GUIDE.md)
+
+---
+
+## 🔄 Phase 2: Data Operations Crew
+
+Phase 2 extends the CrewAI integration with a fully operational **Data Operations Crew** that connects directly to Phase 1 MCP tools and streaming infrastructure.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         DATA OPERATIONS CREW                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌───────────┐ │
+│  │ DataCollector  │  │ DataValidator  │  │  DataCleaner   │  │ Schema    │ │
+│  │    Agent       │──▶│    Agent       │──▶│    Agent       │──▶│ Manager   │ │
+│  │                │  │                │  │                │  │           │ │
+│  │ • collect_data │  │ • validate_data│  │ • clean_anomaly│  │ • optimize│ │
+│  │ • stream_status│  │ • check_gaps   │  │ • fill_gaps    │  │ • vacuum  │ │
+│  │ • reconnect    │  │ • verify       │  │ • normalize    │  │ • stats   │ │
+│  └────────────────┘  └────────────────┘  └────────────────┘  └───────────┘ │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         INTEGRATION COMPONENTS                               │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌────────────────────┐  │
+│  │StreamingController  │  │ DuckDBHistorical    │  │DataOpsMetrics      │  │
+│  │    Bridge           │  │    Access           │  │    Collector       │  │
+│  │                     │  │                     │  │                    │  │
+│  │ • connect()         │  │ • list_tables()     │  │ • record_action()  │  │
+│  │ • get_status()      │  │ • get_historical()  │  │ • record_quality() │  │
+│  │ • trigger_reconnect │  │ • get_statistics()  │  │ • get_dashboard()  │  │
+│  │ • get_table_stats() │  │ • detect_gaps()     │  │ • export_metrics() │  │
+│  └─────────────────────┘  └─────────────────────┘  └────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                              EVENT BUS                                       │
+│   DATA_RECEIVED │ STREAM_STATUS │ QUALITY_ALERT │ AGENT_ACTION │ ESCALATION │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4 Specialized Agents
+
+| Agent | Role | Tools | Autonomous Behaviors |
+|-------|------|-------|---------------------|
+| **DataCollector** | Collect data from 8 exchanges | `collect_exchange_data`, `get_stream_status`, `trigger_reconnect` | auto_reconnect on disconnect |
+| **DataValidator** | Ensure data quality & integrity | `validate_recent_data`, `check_data_gaps`, `verify_cross_exchange` | auto_validation every 5 min |
+| **DataCleaner** | Fix anomalies & interpolate gaps | `clean_data_anomalies`, `fill_data_gaps`, `normalize_data` | gap_detection every 15 min |
+| **SchemaManager** | Manage DB schema & optimize | `optimize_schema`, `vacuum_tables`, `get_table_stats` | schema_optimize daily |
+
+### Tool Wrappers (MCP → CrewAI Bridge)
+
+Phase 2 wraps all 252+ Phase 1 MCP tools into CrewAI-compatible tool classes:
+
+```python
+# Tool wrapper categories
+ExchangeDataTools   # 60+ tools: binance_get_ticker, bybit_get_orderbook, etc.
+StreamingTools      # 20+ tools: start_stream, stop_stream, health_check
+AnalyticsTools      # 40+ tools: order_flow, regime_detect, alpha_signals
+ForecastingTools    # 38+ models: ARIMA, Prophet, N-BEATS, TFT, etc.
+FeatureTools        # 35+ tools: price_features, orderbook_features, composite
+```
+
+### Quick Start (Data Operations Crew)
+
+```python
+from crewai_integration.crews.data_ops import DataOperationsCrew
+
+# Initialize crew
+crew = DataOperationsCrew()
+await crew.initialize()
+
+# Run single task
+result = await crew.kickoff({
+    "task": "validate_all_streams",
+    "exchanges": ["binance", "bybit"]
+})
+
+# Run continuous monitoring
+await crew.run_continuous(interval=300)  # Every 5 minutes
+
+# Get metrics dashboard
+dashboard = crew.metrics.get_dashboard_metrics()
+print(f"Actions: {dashboard['agent_actions']}")
+print(f"Quality Issues: {dashboard['quality_issues']}")
+print(f"Health Score: {dashboard['health_score']}%")
+```
+
+### Run Phase 2 Tests
+
+```bash
+# Quick integration test
+python test_phase_integration_10min.py --quick
+
+# Full 10-minute test with monitoring
+python test_phase_integration_10min.py
+
+# Phase 2 unit tests
+python -m pytest tests/test_phase2_integration.py -v
+```
+
+Expected output:
+```
+======================================================================
+🔬 PHASE 1-2 INTEGRATION TEST SUITE
+======================================================================
+Running 27 tests...
+
+✅ test_mcp_tools_available - PASSED
+✅ test_exchange_data_tools - PASSED
+✅ test_streaming_tools - PASSED
+✅ test_analytics_tools - PASSED
+✅ test_forecasting_tools - PASSED
+✅ test_data_ops_crew_init - PASSED
+✅ test_streaming_controller_bridge - PASSED
+✅ test_duckdb_historical_access - PASSED
+✅ test_metrics_collector - PASSED
+✅ test_event_bus - PASSED
+... (17 more tests)
+
+📊 RESULTS: 27/27 PASSED (100%)
+✅ SYSTEM READY FOR PHASE 3
+```
+
+### Metrics Collected
+
+| Metric | Description | Storage |
+|--------|-------------|---------|
+| `agent_actions` | All agent activities | `crewai_data_ops.duckdb:agent_actions` |
+| `quality_issues` | Data quality problems | `crewai_data_ops.duckdb:quality_issues` |
+| `interpolations` | Gap filling operations | `crewai_data_ops.duckdb:interpolations` |
+| `escalations` | Issues requiring human review | `crewai_data_ops.duckdb:escalations` |
+| `health_score` | Overall system health (0-100%) | Computed from above |
 
 ---
 
@@ -754,10 +1002,13 @@ Edit `config/streaming_config.json`:
 
 ## 📚 Documentation
 
+- **[DATA_FLOW_DIAGRAM.md](DATA_FLOW_DIAGRAM.md)** - Complete data flow & integration diagram *(NEW)*
 - **[SYSTEM_WORKFLOW_DIAGRAM.md](SYSTEM_WORKFLOW_DIAGRAM.md)** - Complete system visualization
 - **[COMPLETE_SCHEMA_REFERENCE.md](COMPLETE_SCHEMA_REFERENCE.md)** - Database schema details
 - **[STREAM_REFERENCE.md](STREAM_REFERENCE.md)** - Data stream specifications
 - **[KATS_COMPARISON_SUMMARY.md](KATS_COMPARISON_SUMMARY.md)** - Comparison with Meta Kats
+- **[crewai_integration/docs/README.md](crewai_integration/docs/README.md)** - CrewAI integration guide
+- **[crewai_integration/docs/TOOL_WRAPPER_REFERENCE.md](crewai_integration/docs/TOOL_WRAPPER_REFERENCE.md)** - Tool wrapper docs
 
 ---
 
@@ -793,7 +1044,7 @@ Edit `config/streaming_config.json`:
 
 | Metric | Value |
 |--------|-------|
-| **Total MCP Tools** | 217 |
+| **Total MCP Tools** | 252+ |
 | **Forecasting Models** | 38+ |
 | **Exchanges Supported** | 8 |
 | **DuckDB Tables** | 504 |
@@ -803,6 +1054,8 @@ Edit `config/streaming_config.json`:
 | **Best MAPE Achieved** | 1.8% (TFT on BTCUSDT) |
 | **Drift Detection Latency** | <100ms |
 | **Health Check Interval** | 60s |
+| **CrewAI Agents** | 8 (4 in Data Ops Crew) |
+| **Integration Test Coverage** | 100% (27/27 tests) |
 
 ---
 

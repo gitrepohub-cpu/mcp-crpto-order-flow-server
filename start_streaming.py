@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🚀 Start Production Streaming
+Start Production Streaming
 =============================
 
 Easy-to-use script to start the production streaming system.
@@ -22,15 +22,21 @@ import argparse
 import signal
 import sys
 import logging
+import io
 from pathlib import Path
 
-# Setup logging
+# Fix Windows console encoding for Unicode characters
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# Setup logging with UTF-8 encoding
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('streaming.log', mode='a')
+        logging.StreamHandler(stream=sys.stdout),  # Uses our UTF-8 wrapped stdout
+        logging.FileHandler('streaming.log', mode='a', encoding='utf-8')
     ]
 )
 logger = logging.getLogger(__name__)
@@ -53,7 +59,7 @@ async def main(args):
     
     # Setup signal handlers for graceful shutdown
     def signal_handler(sig, frame):
-        logger.info(f"\n🛑 Received signal {sig}, initiating shutdown...")
+        logger.info(f"\n[STOP] Received signal {sig}, initiating shutdown...")
         asyncio.create_task(controller.stop())
     
     signal.signal(signal.SIGINT, signal_handler)
@@ -61,13 +67,13 @@ async def main(args):
     
     # Print startup banner
     print("\n" + "=" * 70)
-    print("🚀 PRODUCTION STREAMING SYSTEM")
+    print("[START] PRODUCTION STREAMING SYSTEM")
     print("=" * 70)
-    print(f"📊 Symbols: {controller.config.get('symbols', [])}")
-    print(f"🏦 Exchanges: {controller.config.get('exchanges', [])}")
-    print(f"📈 Market Type: {controller.config.get('market_type', 'futures')}")
-    print(f"⏱️  Forecast Interval: {controller.config.get('forecast_interval_seconds', 300)}s")
-    print(f"🔍 Drift Check Interval: {controller.config.get('drift_check_interval_seconds', 600)}s")
+    print(f"[SYMBOLS] {controller.config.get('symbols', [])}")
+    print(f"[EXCHANGES] {controller.config.get('exchanges', [])}")
+    print(f"[MARKET] {controller.config.get('market_type', 'futures')}")
+    print(f"[FORECAST] Interval: {controller.config.get('forecast_interval_seconds', 300)}s")
+    print(f"[DRIFT] Check Interval: {controller.config.get('drift_check_interval_seconds', 600)}s")
     print("=" * 70)
     print("\nPress Ctrl+C to stop streaming...\n")
     
@@ -78,7 +84,7 @@ async def main(args):
         logger.info("Keyboard interrupt received")
     finally:
         await controller.stop()
-        print("\n✅ Streaming stopped gracefully")
+        print("\n[OK] Streaming stopped gracefully")
 
 
 def parse_args():
@@ -136,7 +142,7 @@ if __name__ == "__main__":
     
     # Check Python version
     if sys.version_info < (3, 9):
-        print("❌ Python 3.9+ required")
+        print("[ERROR] Python 3.9+ required")
         sys.exit(1)
     
     # Run

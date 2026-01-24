@@ -317,8 +317,11 @@ def show_regime_analyzer():
         ))
         
         # Mark change points
-        for cp in change_points:
-            fig.add_vline(x=times[cp], line_dash="dash", line_color="#f59e0b",
+        for i, cp in enumerate(change_points):
+            # Convert datetime to timestamp for plotly compatibility
+            cp_time = times[cp]
+            fig.add_vline(x=cp_time if isinstance(cp_time, (int, float)) else cp_time.timestamp() * 1000, 
+                         line_dash="dash", line_color="#f59e0b",
                          annotation_text=f"CP {cp}")
             fig.add_trace(go.Scatter(
                 x=[times[cp]],
@@ -326,7 +329,7 @@ def show_regime_analyzer():
                 mode='markers',
                 marker=dict(size=15, color='#f59e0b', symbol='star'),
                 name=f'Change Point',
-                showlegend=cp == change_points[0]
+                showlegend=i == 0
             ))
         
         fig.update_layout(
