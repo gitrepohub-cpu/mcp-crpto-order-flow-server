@@ -7,7 +7,7 @@
 [![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-purple)](https://websockets.readthedocs.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **252 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, **139 institutional features** with **15 composite signals** for smart money detection, **Sibyl Dashboard** for real-time visualization, and **CrewAI Data Operations Crew** with 4 specialized agents. Connects to 8 exchanges simultaneously, stores data in DuckDB with 504 isolated tables, and provides enterprise-grade time series analytics.
+A **production-grade** Model Context Protocol (MCP) server for **real-time cryptocurrency market data collection, AI-powered forecasting, and advanced analytics**. Features **252 MCP tools** (including 35 new institutional-grade tools), **38+ forecasting models** via Darts integration, **production streaming system** with health monitoring, **intelligent model routing** for optimal predictions, **139 institutional features** with **15 composite signals** for smart money detection, **Sibyl Dashboard** for real-time visualization, and **CrewAI Data Operations Crew** with 4 specialized agents. Connects to **7 exchanges (9 markets)** simultaneously including KuCoin Spot/Futures, stores data in DuckDB with 200+ isolated tables, and provides enterprise-grade time series analytics.
 
 ---
 
@@ -51,7 +51,7 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
 
 1. **🔴 Real-Time Streaming System** *(NEW)*
    - Production-grade streaming controller with health monitoring
-   - Automatic data collection from 8 exchanges via WebSocket
+   - Automatic data collection from 7 exchanges (9 markets) via WebSocket
    - Real-time analytics pipeline with live forecasting
    - Model drift detection and auto-retraining
    - Alert system with multiple dispatch channels
@@ -136,7 +136,7 @@ A **production-grade** Model Context Protocol (MCP) server for **real-time crypt
 For a comprehensive visual representation of the entire system architecture, data flows, and integration points, see:
 
 **📄 [DATA_FLOW_DIAGRAM.md](DATA_FLOW_DIAGRAM.md)** - Complete data flow visualization including:
-- External data sources (8 exchanges)
+- External data sources (7 exchanges, 9 markets)
 - Phase 1 MCP Server & Streaming Layer (252+ tools)
 - Phase 2 CrewAI Data Operations Crew (4 agents)
 - Storage Layer (504 DuckDB tables)
@@ -172,7 +172,7 @@ The system now includes a comprehensive CrewAI integration layer for multi-agent
 
 | Agent | Crew | Role |
 |-------|------|------|
-| **data_acquisition_agent** | Data | Collects market data from 8 exchanges |
+| **data_acquisition_agent** | Data | Collects market data from 7 exchanges (9 markets) |
 | **data_quality_agent** | Data | Validates data quality and detects anomalies |
 | **forecasting_agent** | Analytics | Generates ML-powered price forecasts |
 | **regime_detection_agent** | Analytics | Identifies market regimes |
@@ -272,7 +272,7 @@ Phase 2 extends the CrewAI integration with a fully operational **Data Operation
 
 | Agent | Role | Tools | Autonomous Behaviors |
 |-------|------|-------|---------------------|
-| **DataCollector** | Collect data from 8 exchanges | `collect_exchange_data`, `get_stream_status`, `trigger_reconnect` | auto_reconnect on disconnect |
+| **DataCollector** | Collect data from 7 exchanges (9 markets) | `collect_exchange_data`, `get_stream_status`, `trigger_reconnect` | auto_reconnect on disconnect |
 | **DataValidator** | Ensure data quality & integrity | `validate_recent_data`, `check_data_gaps`, `verify_cross_exchange` | auto_validation every 5 min |
 | **DataCleaner** | Fix anomalies & interpolate gaps | `clean_data_anomalies`, `fill_data_gaps`, `normalize_data` | gap_detection every 15 min |
 | **SchemaManager** | Manage DB schema & optimize | `optimize_schema`, `vacuum_tables`, `get_table_stats` | schema_optimize daily |
@@ -378,7 +378,7 @@ python start_streaming.py --symbols BTCUSDT ETHUSDT --exchanges binance bybit
 ```
 
 **Features:**
-- ✅ Multi-exchange data collection (8 exchanges)
+- ✅ Multi-exchange data collection (7 exchanges, 9 markets)
 - ✅ Real-time analytics callbacks
 - ✅ Automatic forecast generation
 - ✅ Health monitoring (records/min, errors, uptime)
@@ -421,18 +421,21 @@ drift = await detect_model_drift(
 
 ---
 
-## 🏛️ Supported Exchanges (8 Total)
+## 🏛️ Supported Exchanges (7 Exchanges, 9 Markets)
 
-| Exchange | Type | Data Streams |
-|----------|------|--------------|
+| Exchange | Market Type | Data Streams |
+|----------|-------------|--------------|
 | **Binance Futures** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Candles |
 | **Binance Spot** | Spot | Prices, Orderbook, Trades, 24h Ticker, Candles |
-| **Bybit** | Perpetuals/Spot | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Candles |
+| **Bybit Futures** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Candles |
+| **Bybit Spot** | Spot | Prices, Orderbook, Trades |
 | **OKX** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Index Prices |
-| **Kraken** | Perpetuals | Prices, Orderbook, Trades, OI, Candles |
 | **Gate.io** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Candles |
-| **Deribit** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI |
 | **Hyperliquid** | Perpetuals | Prices, Orderbook, Trades, Mark Price, Funding, OI, Liquidations, Candles |
+| **KuCoin Spot** | Spot | Prices, Orderbook, Trades |
+| **KuCoin Futures** | Perpetuals | Prices, Trades, Candles |
+
+> **Note:** KuCoin Futures uses `XBT` instead of `BTC` in their symbol format (e.g., `XBTUSDTM` instead of `BTCUSDTM`). The collector handles this mapping automatically.
 
 ---
 
@@ -485,10 +488,13 @@ btcusdt_binance_futures_trades
 btcusdt_binance_spot_prices
 ethusdt_bybit_futures_funding_rates
 solusdt_okx_futures_liquidations
+btcusdt_kucoin_spot_prices
+btcusdt_kucoin_futures_trades
 ```
 
-### Why 504 Tables?
-- **9 symbols** × **8 exchanges** × **~7 stream types** = **504 tables**
+### Dynamic Table Count
+- Tables are created dynamically based on available data streams
+- **9 symbols** × **7 exchanges** × **9 markets** × **~7 stream types**
 - Complete data isolation - no mixing of data from different sources
 - Enables precise per-exchange, per-coin analysis
 - Fast queries on specific data subsets
@@ -542,7 +548,7 @@ solusdt_okx_futures_liquidations
 │                           │                                                │
 │                           ▼                                                │
 │  ┌─────────────────────────────────────────────────────────────┐           │
-│  │              DUCKDB STORAGE (504 TABLES)                     │           │
+│  │              DUCKDB STORAGE (200+ TABLES)                    │           │
 │  │                                                              │           │
 │  │  data/isolated_exchange_data.duckdb                          │           │
 │  │  Complete Isolation • File-Based • Time-Partitioned          │           │
@@ -552,9 +558,10 @@ solusdt_okx_futures_liquidations
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              EXCHANGES (8)                                   │
+│                        EXCHANGES (7 Exchanges, 9 Markets)                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Binance  │  Bybit  │  OKX  │  Kraken  │  Gate.io  │  Deribit  │  Hyperliquid│
+│  Binance  │  Bybit  │  OKX  │  Gate.io  │  Hyperliquid  │  KuCoin           │
+│  (Futures + Spot)   │ (Futures + Spot) │ (Futures)  │  (Futures + Spot)    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -598,18 +605,44 @@ pip install -r requirements.txt
 ### Initialize Database
 
 ```bash
-# Create all 504 isolated tables
+# Create isolated tables
 python -m src.storage.isolated_database_init
 ```
 
 Expected output:
 ```
-✅ Created 504 isolated tables
-📊 Tables created for 9 symbols across 8 exchanges
+✅ Created isolated tables
+📊 Tables created for 9 symbols across 7 exchanges (9 markets)
 🗄️ Database: data/isolated_exchange_data.duckdb
 ```
 
-### Start Production Streaming (NEW)
+### Start Robust Data Collection
+
+```bash
+# Start robust collector (recommended) - collects from all 7 exchanges
+python robust_collector.py
+
+# Or run for specific duration (in minutes)
+python robust_collector.py 10
+```
+
+Expected output:
+```
+======================================================================
+ ROBUST MULTI-EXCHANGE DATA COLLECTOR
+======================================================================
+✅ BINANCE_FUTURES: 9 symbols - prices, orderbooks, trades, funding, oi
+✅ BINANCE_SPOT: 7 symbols - prices, orderbooks, trades
+✅ BYBIT_LINEAR: 9 symbols - prices, orderbooks, trades, funding, oi
+✅ BYBIT_SPOT: 9 symbols - prices, orderbooks, trades
+✅ OKX: 5 symbols - prices, orderbooks, trades, funding, oi
+✅ GATEIO: 9 symbols - prices, orderbooks, trades, funding, oi
+✅ HYPERLIQUID: 7 symbols - prices, orderbooks, trades
+✅ KUCOIN_SPOT: 4 symbols - prices, orderbooks, trades
+✅ KUCOIN_FUTURES: 4 symbols - prices, trades
+```
+
+### Alternative: Start Production Streaming
 
 ```bash
 # Start streaming with default config
@@ -1046,8 +1079,8 @@ Edit `config/streaming_config.json`:
 |--------|-------|
 | **Total MCP Tools** | 252+ |
 | **Forecasting Models** | 38+ |
-| **Exchanges Supported** | 8 |
-| **DuckDB Tables** | 504 |
+| **Exchanges Supported** | 7 (9 markets) |
+| **DuckDB Tables** | 200+ (dynamic) |
 | **Data Ingestion Rate** | 7,393 records/min |
 | **Forecast Latency** | 300-3000ms (model-dependent) |
 | **Model Selection Time** | <50ms (IntelligentRouter) |
@@ -1106,7 +1139,7 @@ Compare prices between two specific exchanges.
 | `exchange1` | string | required | First exchange ID |
 | `exchange2` | string | required | Second exchange ID |
 
-**Exchange IDs:** `binance_futures`, `binance_spot`, `bybit_futures`, `bybit_spot`, `okx_futures`, `kraken_futures`, `gate_futures`, `hyperliquid_futures`, `pyth`
+**Exchange IDs:** `binance_futures`, `binance_spot`, `bybit_futures`, `bybit_spot`, `okx_futures`, `gate_futures`, `hyperliquid_futures`, `kucoin_spot`, `kucoin_futures`
 
 ### 6. `crypto_scanner_health`
 Check health and connectivity of the arbitrage scanner.
@@ -1796,8 +1829,9 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - ✅ Plugin-Based Feature Calculator Framework
 - ✅ 4 Built-in Feature Calculators
 - ✅ Auto-discovery and MCP registration
-- ✅ 9 exchange support (Binance, Bybit, OKX, Kraken, Gate.io, Hyperliquid, Pyth)
-- ✅ 504 isolated DuckDB tables
+- ✅ 7 exchange support (Binance, Bybit, OKX, Gate.io, Hyperliquid, KuCoin)
+- ✅ 9 markets (Binance Futures/Spot, Bybit Futures/Spot, OKX, Gate.io, Hyperliquid, KuCoin Spot/Futures)
+- ✅ 200+ isolated DuckDB tables
 - ✅ Real-time arbitrage detection
 - ✅ Advanced analytics engine (5-layer architecture)
 - ✅ Production-grade error handling

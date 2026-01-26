@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-01-22
+
+### Added
+- **KuCoin Exchange Support (Spot + Futures)**
+  - KuCoin Spot: Prices, Orderbooks, Trades for BTC, ETH, SOL, XRP
+  - KuCoin Futures: Prices, Trades, Candles for BTC, ETH, SOL, XRP
+  - Token-based WebSocket authentication via `/api/v1/bullet-public`
+  - Automatic symbol mapping (KuCoin uses `XBTUSDTM` instead of `BTCUSDTM`)
+  - Proper ping/pong handling for connection keepalive
+
+### Changed
+- **Exchange Coverage**: Now 7 exchanges with 9 markets (100% coverage)
+  - Binance (Futures + Spot)
+  - Bybit (Futures + Spot)
+  - OKX (Futures)
+  - Gate.io (Futures)
+  - Hyperliquid (Futures)
+  - KuCoin (Spot + Futures) **NEW**
+
+### Fixed
+- **Bybit Spot Subscription Batching**
+  - Bybit has a 10-argument limit per subscription message
+  - Fixed by batching subscriptions into groups of 10
+  - All 9 symbols now subscribe correctly
+
+- **KuCoin Futures Symbol Format**
+  - KuCoin uses `XBT` instead of `BTC` for Bitcoin perpetuals
+  - Added `KUCOIN_FUTURES_MAP` for proper symbol translation:
+    - `BTCUSDT` → `XBTUSDTM`
+    - `ETHUSDT` → `ETHUSDTM`
+    - `SOLUSDT` → `SOLUSDTM`
+    - `XRPUSDT` → `XRPUSDTM`
+  - Handler normalizes symbols back to standard format for storage
+
+### Technical
+- `robust_collector.py` now achieves 100% exchange coverage
+- KuCoin WebSocket endpoints:
+  - Spot: `wss://ws-api-spot.kucoin.com/`
+  - Futures: `wss://ws-api-futures.kucoin.com/`
+- Updated README with new exchange matrix and quick start guide
+
+---
+
 ## [2.3.0] - 2025-01-21
 
 ### Added
