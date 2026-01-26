@@ -619,7 +619,13 @@ class RobustCollector:
         channel = data.get('channel', '')
         event = data.get('event', '')
         result = data.get('result', {})
-        if not result or event == 'subscribe':
+        
+        # Skip subscription confirmations
+        if event == 'subscribe':
+            return
+        
+        # Gate.io uses event='update' for trades/tickers and event='all' for orderbooks
+        if not result:
             return
         
         if 'trades' in channel:
