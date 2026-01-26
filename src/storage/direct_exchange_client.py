@@ -1595,7 +1595,7 @@ class DirectExchangeClient:
         url = "wss://hermes.pyth.network/ws"
         
         # Pyth price feed IDs for major crypto (these are the official Pyth price IDs)
-        # Note: Meme coins (BRETT, POPCAT, WIF, PNUT) may not have Pyth oracle feeds yet
+        # Verified working feeds only
         pyth_feeds = {
             # BTC/USD
             "BTCUSDT": "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
@@ -1605,9 +1605,8 @@ class DirectExchangeClient:
             "SOLUSDT": "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
             # XRP/USD
             "XRPUSDT": "ec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8",
-            # AR/USD (Arweave)
-            "ARUSDT": "3d690e3770fa9fa0d22346c3c90c49c7ca76f898ffa2c5cf21f780709963d0de"
-            # BRETT, POPCAT, WIF, PNUT: No Pyth feeds available yet
+            # AR/USD - Note: Arweave feed ID needs verification, removing for now
+            # BRETT, POPCAT, WIF, PNUT: No Pyth feeds available
         }
         
         reverse_feeds = {v: k for k, v in pyth_feeds.items()}
@@ -1651,7 +1650,10 @@ class DirectExchangeClient:
                                         # Pyth prices need to be adjusted by exponent
                                         actual_price = price * (10 ** expo)
                                         if actual_price > 0:
+                                            logger.debug(f"Pyth {symbol}: ${actual_price:.2f}")
                                             await self._update_price(symbol, "pyth", actual_price, actual_price, actual_price)
+                            elif data.get("type") == "response":
+                                logger.info(f"Pyth subscription response: {data}")
                         except json.JSONDecodeError:
                             pass
                         except Exception as e:

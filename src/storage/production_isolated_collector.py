@@ -423,7 +423,9 @@ class ProductionIsolatedCollector:
                 if market_type != 'futures':
                     continue
                 
-                oi = oi_data.get('oi', 0) or 0
+                # Key can be 'oi' or 'open_interest' depending on source
+                oi = oi_data.get('open_interest') or oi_data.get('oi', 0) or 0
+                oi_value = oi_data.get('open_interest_value') or oi_data.get('oi_value', 0) or 0
                 if oi > 0:
                     try:
                         await self.data_collector.add_open_interest(
@@ -432,7 +434,7 @@ class ProductionIsolatedCollector:
                             market_type=market_type,
                             data={
                                 'open_interest': oi,
-                                'open_interest_value': oi_data.get('oi_value', 0) or 0,
+                                'open_interest_value': oi_value,
                                 'timestamp': oi_data.get('timestamp', int(time.time() * 1000)),
                             }
                         )
@@ -452,7 +454,8 @@ class ProductionIsolatedCollector:
                 
                 exchange, market_type = self.EXCHANGE_MAP[exc_name]
                 
-                volume = ticker_data.get('volume', 0) or 0
+                # Keys can be 'volume' or 'volume_24h' depending on source
+                volume = ticker_data.get('volume_24h') or ticker_data.get('volume', 0) or 0
                 if volume > 0:
                     try:
                         await self.data_collector.add_ticker_24h(
@@ -461,11 +464,11 @@ class ProductionIsolatedCollector:
                             market_type=market_type,
                             data={
                                 'volume': volume,
-                                'quote_volume': ticker_data.get('quote_volume', 0) or 0,
-                                'high': ticker_data.get('high', 0) or 0,
-                                'low': ticker_data.get('low', 0) or 0,
-                                'price_change_pct': ticker_data.get('price_change_pct', 0) or 0,
-                                'trades_count': ticker_data.get('trades_count', 0) or 0,
+                                'quote_volume': ticker_data.get('quote_volume_24h') or ticker_data.get('quote_volume', 0) or 0,
+                                'high': ticker_data.get('high_24h') or ticker_data.get('high', 0) or 0,
+                                'low': ticker_data.get('low_24h') or ticker_data.get('low', 0) or 0,
+                                'price_change_pct': ticker_data.get('price_change_percent_24h') or ticker_data.get('price_change_pct', 0) or 0,
+                                'trades_count': ticker_data.get('trades_count_24h') or ticker_data.get('trades_count', 0) or 0,
                                 'timestamp': ticker_data.get('timestamp', int(time.time() * 1000)),
                             }
                         )

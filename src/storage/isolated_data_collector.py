@@ -249,6 +249,17 @@ class IsolatedDataCollector:
             bids = data.get('bids', [])[:10]
             asks = data.get('asks', [])[:10]
             
+            # Normalize bid/ask format - could be list [price, qty] or dict {price, quantity}
+            def normalize_level(level):
+                if isinstance(level, dict):
+                    return [level.get('price'), level.get('quantity')]
+                elif isinstance(level, (list, tuple)) and len(level) >= 2:
+                    return [level[0], level[1]]
+                return [None, None]
+            
+            bids = [normalize_level(b) for b in bids]
+            asks = [normalize_level(a) for a in asks]
+            
             # Pad to 10 levels
             while len(bids) < 10:
                 bids.append([None, None])

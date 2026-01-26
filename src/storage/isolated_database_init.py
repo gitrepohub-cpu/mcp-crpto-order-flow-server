@@ -58,7 +58,7 @@ COIN_EXCHANGE_MAP = {
     'arusdt': {
         'futures': ['binance', 'bybit', 'okx', 'kraken', 'gateio', 'hyperliquid'],
         'spot': ['binance', 'bybit'],
-        'oracle': ['pyth']
+        'oracle': []  # Note: Arweave Pyth feed ID needs verification
     },
     # Meme coins - LIMITED availability
     'brettusdt': {
